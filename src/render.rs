@@ -212,8 +212,8 @@ impl Layer {
 
 /// A view on an area of a PDF layer that can be drawn on.
 ///
-/// This page provides access to the drawing methods of a [`printpdf::PdfLayerReference`][].  It is
-/// defined by the layer that is drawn on and the origin and the size of the area.
+/// This struct provides access to the drawing methods of a [`printpdf::PdfLayerReference`][].  It
+/// is defined by the layer that is drawn on and the origin and the size of the area.
 ///
 /// [`printpdf::PdfLayerReference`]: https://docs.rs/printpdf/0.3.2/printpdf/types/pdf_layer/struct.PdfLayerReference.html
 #[derive(Clone)]

@@ -9,7 +9,7 @@ A user-friendly PDF generator written in pure Rust.
 
 [Documentation](https://docs.rs/genpdf)
 
-`genpdf` is a high-level PDF generator built ontop of [`printpdf`][] and
+`genpdf` is a high-level PDF generator built on top of [`printpdf`][] and
 [`rusttype`][].  It takes care of the page layout and text alignment and
 renders a document tree into a PDF document.  All of its dependencies are
 written in Rust, so you don’t need any pre-installed libraries or tools.
