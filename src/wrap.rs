@@ -54,17 +54,17 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
     }
 }
 
-pub struct Words<'s, I: Iterator<Item = style::StyledStr<'s>>> {
+pub struct Words<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> {
     iter: I,
     offset: usize,
     s: Option<style::StyledStr<'s>>,
 }
 
-impl<'s, I: Iterator<Item = style::StyledStr<'s>>> Words<'s, I> {
-    pub fn new<IntoIter: IntoIterator<Item = style::StyledStr<'s>, IntoIter = I>>(
+impl<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> Words<'s, S, I> {
+    pub fn new<IntoIter: IntoIterator<Item = S, IntoIter = I>>(
         iter: IntoIter,
         offset: usize,
-    ) -> Words<'s, I> {
+    ) -> Words<'s, S, I> {
         Words {
             iter: iter.into_iter(),
             offset,
@@ -73,12 +73,12 @@ impl<'s, I: Iterator<Item = style::StyledStr<'s>>> Words<'s, I> {
     }
 }
 
-impl<'s, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Words<'s, I> {
+impl<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> Iterator for Words<'s, S, I> {
     type Item = style::StyledStr<'s>;
 
     fn next(&mut self) -> Option<style::StyledStr<'s>> {
         if self.s.as_ref().map(|s| s.s.is_empty()).unwrap_or(true) {
-            self.s = self.iter.next();
+            self.s = self.iter.next().map(Into::into);
         }
 
         if let Some(s) = &mut self.s {

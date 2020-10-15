@@ -41,7 +41,7 @@ use std::iter;
 use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::render;
-use crate::style::{Style, StyledStr, StyledString};
+use crate::style::{Style, StyledString};
 use crate::wrap;
 use crate::{Element, Margins, Mm, Position, RenderResult, Size};
 
@@ -239,6 +239,7 @@ pub struct Paragraph {
     text: Vec<StyledString>,
     render_offset: usize,
     render_idx: usize,
+    style_applied: bool,
     alignment: Alignment,
 }
 
@@ -291,6 +292,15 @@ impl Paragraph {
             Alignment::Right => max_width - width,
         }
     }
+
+    fn apply_style(&mut self, style: Style) {
+        if !self.style_applied {
+            for s in &mut self.text {
+                s.style = style.and(s.style);
+            }
+            self.style_applied = true;
+        }
+    }
 }
 
 impl Element for Paragraph {
@@ -305,22 +315,11 @@ impl Element for Paragraph {
             return Ok(result);
         }
 
-        let strings = self
-            .text
-            .iter()
-            .map(|s| {
-                let mut style = style;
-                style.merge(s.style);
-                StyledStr::new(&s.s, style)
-            })
-            .skip(self.render_idx);
+        self.apply_style(style);
 
         let height = style.line_height(font_cache);
-        for line in wrap::Wrapper::new(
-            wrap::Words::new(strings, self.render_offset),
-            font_cache,
-            area.size().width,
-        ) {
+        let words = wrap::Words::new(self.text.iter().skip(self.render_idx), self.render_offset);
+        for line in wrap::Wrapper::new(words, font_cache, area.size().width) {
             let width = line.iter().map(|s| s.width(font_cache)).sum();
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height
