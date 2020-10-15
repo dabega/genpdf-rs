@@ -284,6 +284,12 @@ impl Position {
     }
 }
 
+impl From<Position> for printpdf::Point {
+    fn from(pos: Position) -> printpdf::Point {
+        printpdf::Point::new(pos.x.into(), pos.y.into())
+    }
+}
+
 impl<X: Into<Mm>, Y: Into<Mm>> From<(X, Y)> for Position {
     fn from(values: (X, Y)) -> Position {
         Position::new(values.0, values.1)

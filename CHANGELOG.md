@@ -7,6 +7,7 @@ SPDX-License-Identifier: CC0-1.0
 
 - Implement `From<&String>` for `StyledString`.
 - Derive `Add`, `AddAssign`, `Sub` and `SubAssign` for `Position` and `Size`.
+- Implement `From<Position>` for `printpdf::Point`.
 
 # v0.1.0 (2020-10-15)
 
