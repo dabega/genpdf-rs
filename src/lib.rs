@@ -266,7 +266,7 @@ impl From<Mm> for printpdf::Pt {
 /// A position on a PDF layer, measured in millimeters.
 ///
 /// All positions used by `genpdf` are measured from the top left corner of the reference area.
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign)]
 pub struct Position {
     /// The x coordinate of the position, measured from the left border of the reference area.
     pub x: Mm,
@@ -291,7 +291,7 @@ impl<X: Into<Mm>, Y: Into<Mm>> From<(X, Y)> for Position {
 }
 
 /// A size of an area on a PDF layer, measured in millimeters.
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign)]
 pub struct Size {
     /// The width of the area.
     pub width: Mm,

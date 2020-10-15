@@ -6,6 +6,7 @@ SPDX-License-Identifier: CC0-1.0
 # Unreleased
 
 - Implement `From<&String>` for `StyledString`.
+- Derive `Add`, `AddAssign`, `Sub` and `SubAssign` for `Position` and `Size`.
 
 # v0.1.0 (2020-10-15)
 
