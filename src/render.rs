@@ -208,6 +208,13 @@ impl Layer {
     pub fn area(&self) -> Area<'_> {
         Area::new(self, Position::default(), self.size)
     }
+
+    /// Transforms the given position that is relative to the upper left corner of the layer to a
+    /// position that is relative to the lower left corner of the layer (as used by `printpdf`).
+    fn transform_position(&self, mut position: Position) -> Position {
+        position.y = self.size.height - position.y;
+        position
+    }
 }
 
 /// A view on an area of a PDF layer that can be drawn on.
@@ -272,15 +279,7 @@ impl<'a> Area<'a> {
     pub fn draw_line(&self, points: Vec<Position>, style: Style) {
         let line_points: Vec<_> = points
             .into_iter()
-            .map(|pos| {
-                (
-                    printpdf::Point::new(
-                        (self.origin.x + pos.x).into(),
-                        (self.layer.size.height - self.origin.y - pos.y).into(),
-                    ),
-                    false,
-                )
-            })
+            .map(|pos| (self.transform_position(pos).into(), false))
             .collect();
         let line = printpdf::Line {
             points: line_points,
@@ -333,6 +332,13 @@ impl<'a> Area<'a> {
         TextSection::new(font_cache, self, position, style)
     }
 
+    /// Transforms the given position that is relative to the upper left corner of the area to a
+    /// position that is relative to the lower left corner of its layer (as used by `printpdf`).
+    fn transform_position(&self, mut position: Position) -> Position {
+        position += self.origin;
+        self.layer.transform_position(position)
+    }
+
     fn layer(&self) -> &printpdf::PdfLayerReference {
         &self.layer.layer
     }
@@ -370,10 +376,10 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
         };
         section.layer().begin_text_section();
         section.layer().set_line_height(line_height.0 as i64);
-        section.layer().set_text_cursor(
-            (section.area.origin.x + position.x).into(),
-            (section.area.layer.size.height - section.area.origin.y - position.y - height).into(),
-        );
+        let cursor = area.transform_position(position);
+        section
+            .layer()
+            .set_text_cursor(cursor.x.into(), (cursor.y - height).into());
         Ok(section)
     }
 
