@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2020 Robin Krahl <robin.krahl@ireas.org>
+# SPDX-License-Identifier: CC0-1.0
+
+[package]
+name = "genpdf"
+version = "0.1.0"
+authors = ["Robin Krahl <robin.krahl@ireas.org>"]
+edition = "2018"
+description = "User-friendly PDF generator written in pure Rust"
+homepage = "https://sr.ht/~ireas/genpdf-rs"
+repository = "https://git.sr.ht/~ireas/genpdf-rs"
+documentation = "https://docs.rs/genpdf"
+keywords = ["pdf", "text", "layout"]
+categories = ["text-processing"]
+license = "Apache-2.0 OR MIT"
+exclude = [".builds/*"]
+readme = "README.md"
+
+[dependencies]
+printpdf = "0.3.2"
+rusttype = "0.8"
+
+[dependencies.derive_more]
+version = "0.99"
+default-features = false
+features = ["add", "add_assign", "from", "into", "mul", "mul_assign", "sum"]
