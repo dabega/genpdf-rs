@@ -1145,38 +1145,21 @@ impl TableLayout {
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        let total_weight: usize = self.column_weights.iter().sum();
-        let widths: Vec<_> = self
-            .column_weights
-            .iter()
-            .map(|w| area.size().width * (*w as f64 / total_weight as f64))
-            .collect();
         let mut result = RenderResult::default();
-        let mut offset = Position::default();
+
+        let areas = area.split_horizontally(&self.column_weights);
         let mut row_height = Mm::from(0);
-        let row = &mut self.rows[self.render_idx];
-        for (width, element) in widths.iter().zip(row.iter_mut()) {
-            let mut element_area = area.clone();
-            element_area.add_offset(offset);
-            element_area.set_width(*width);
-            let element_result = element.render(font_cache, element_area, style)?;
+        for (area, element) in areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
+            let element_result = element.render(font_cache, area.clone(), style)?;
             result.has_more |= element_result.has_more;
             row_height = row_height.max(element_result.size.height);
-            offset.x += *width;
         }
         result.size.height = row_height;
 
-        let mut offset = Position::default();
         if let Some(decorator) = &mut self.cell_decorator {
-            for (i, width) in widths.iter().enumerate() {
-                let mut cell_area = area.clone();
-                cell_area.add_offset(offset);
-                cell_area.set_size(Size {
-                    width: *width,
-                    height: row_height,
-                });
-                decorator.decorate_cell(i, self.render_idx, result.has_more, cell_area, style);
-                offset.x += *width;
+            for (i, mut area) in areas.into_iter().enumerate() {
+                area.set_height(row_height);
+                decorator.decorate_cell(i, self.render_idx, result.has_more, area, style);
             }
         }
 

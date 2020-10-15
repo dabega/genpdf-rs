@@ -272,6 +272,32 @@ impl<'a> Area<'a> {
         self.size.width = width;
     }
 
+    /// Sets the height of this area.
+    pub fn set_height(&mut self, height: Mm) {
+        self.size.height = height;
+    }
+
+    /// Splits this area horizontally using the given weights.
+    ///
+    /// The returned vector has the same number of elements as the provided slice.  The width of
+    /// the *i*-th area is *width \* weights[i] / total_weight*, where *width* is the width of this
+    /// area, and *total_weight* is the sum of all given weights.
+    pub fn split_horizontally(&self, weights: &[usize]) -> Vec<Area<'a>> {
+        let total_weight: usize = weights.iter().sum();
+        let factor = self.size.width / total_weight as f64;
+        let widths = weights.iter().map(|weight| factor * *weight as f64);
+        let mut offset = Mm(0.0);
+        let mut areas = Vec::new();
+        for width in widths {
+            let mut area = self.clone();
+            area.origin.x += offset;
+            area.size.width = width;
+            areas.push(area);
+            offset += width;
+        }
+        areas
+    }
+
     /// Draws a line with the given points and the given style.
     ///
     /// Currently, this method only uses the color of the given style as the outline color (if set).
