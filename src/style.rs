@@ -367,6 +367,12 @@ impl From<String> for StyledString {
     }
 }
 
+impl<'a> From<&'a String> for StyledString {
+    fn from(s: &'a String) -> StyledString {
+        StyledString::from(s.to_owned())
+    }
+}
+
 impl<'a> From<&'a str> for StyledString {
     fn from(s: &'a str) -> StyledString {
         StyledString::from(s.to_owned())
