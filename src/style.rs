@@ -359,6 +359,17 @@ impl StyledString {
             style: style.into(),
         }
     }
+
+    /// Calculates the width of the this string with this style using the data in the given font
+    /// cache.
+    ///
+    /// If the font family is set for the style, it must have been created by the given
+    /// [`FontCache`][].
+    ///
+    /// [`FontCache`]: ../fonts/struct.FontCache.html
+    pub fn width(&self, font_cache: &fonts::FontCache) -> Mm {
+        self.style.str_width(font_cache, &self.s)
+    }
 }
 
 impl From<String> for StyledString {
@@ -406,6 +417,17 @@ impl<'s> StyledStr<'s> {
             s,
             style: style.into(),
         }
+    }
+
+    /// Calculates the width of the this string with this style using the data in the given font
+    /// cache.
+    ///
+    /// If the font family is set for the style, it must have been created by the given
+    /// [`FontCache`][].
+    ///
+    /// [`FontCache`]: ../fonts/struct.FontCache.html
+    pub fn width(&self, font_cache: &fonts::FontCache) -> Mm {
+        self.style.str_width(font_cache, &self.s)
     }
 }
 

@@ -31,7 +31,7 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
 
     fn next(&mut self) -> Option<Vec<style::StyledStr<'s>>> {
         while let Some(s) = self.iter.next() {
-            let width = s.style.str_width(self.font_cache, s.s);
+            let width = s.width(self.font_cache);
             if width > self.width {
                 // TODO: handle
                 break;

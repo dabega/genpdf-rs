@@ -9,6 +9,7 @@ SPDX-License-Identifier: CC0-1.0
 - Derive `Add`, `AddAssign`, `Sub` and `SubAssign` for `Position` and `Size`.
 - Implement `From<Position>` for `printpdf::Point`.
 - Add `split_horizontally` method to `Area`.
+- Add `width` method to `StyledString` and `StyledStr`.
 
 # v0.1.0 (2020-10-15)
 

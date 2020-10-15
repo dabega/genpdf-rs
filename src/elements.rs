@@ -321,10 +321,7 @@ impl Element for Paragraph {
             font_cache,
             area.size().width,
         ) {
-            let width = line
-                .iter()
-                .map(|s| s.style.str_width(font_cache, s.s))
-                .sum();
+            let width = line.iter().map(|s| s.width(font_cache)).sum();
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height
             if let Ok(mut section) = area.text_section(font_cache, position, style) {
