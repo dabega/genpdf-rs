@@ -290,13 +290,11 @@ impl<'a> Area<'a> {
             is_clipping_path: false,
         };
         if let Some(color) = style.color() {
-            self.layer.layer.set_outline_color(color.into());
+            self.layer().set_outline_color(color.into());
         }
-        self.layer.layer.add_shape(line);
+        self.layer().add_shape(line);
         if style.color().is_some() {
-            self.layer
-                .layer
-                .set_outline_color(Color::Rgb(0, 0, 0).into());
+            self.layer().set_outline_color(Color::Rgb(0, 0, 0).into());
         }
     }
 
@@ -333,6 +331,10 @@ impl<'a> Area<'a> {
         style: Style,
     ) -> Result<TextSection<'_, 'f, 'a>, ()> {
         TextSection::new(font_cache, self, position, style)
+    }
+
+    fn layer(&self) -> &printpdf::PdfLayerReference {
+        &self.layer.layer
     }
 }
 
@@ -407,7 +409,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
     }
 
     fn layer(&self) -> &printpdf::PdfLayerReference {
-        &self.area.layer.layer
+        self.area.layer()
     }
 }
 
