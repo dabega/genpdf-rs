@@ -19,8 +19,7 @@
 //! let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
 //!     .expect("Failed to load font family");
 //! // Create a document and set the default font family
-//! let mut doc = genpdf::Document::new(font_family)
-//!     .expect("Failed to create PDF document");
+//! let mut doc = genpdf::Document::new(font_family);
 //! // Change the default settings
 //! doc.set_margins(10);
 //! doc.set_title("Demo document");
@@ -437,8 +436,7 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
 ///     .expect("Failed to load font family");
 /// // Create a document and set the default font family
-/// let mut doc = genpdf::Document::new(font_family)
-///     .expect("Failed to create document");
+/// let mut doc = genpdf::Document::new(font_family);
 /// doc.push(genpdf::elements::Paragraph::new("Document content"));
 /// doc.render_to_file("output.pdf").expect("Failed to render document");
 /// ```
@@ -459,18 +457,16 @@ pub struct Document {
 
 impl Document {
     /// Creates a new document with the given default font family.
-    pub fn new(
-        default_font_family: fonts::FontFamily<fonts::FontData>,
-    ) -> Result<Document, error::Error> {
-        Ok(Document {
+    pub fn new(default_font_family: fonts::FontFamily<fonts::FontData>) -> Document {
+        Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
-            font_cache: fonts::FontCache::new(default_font_family)?,
+            font_cache: fonts::FontCache::new(default_font_family),
             style: style::Style::new(),
             paper_size: PaperSize::A4.into(),
             margins: None,
             conformance: None,
-        })
+        }
     }
 
     /// Adds the given font family to the font cache for this document and returns a reference to
@@ -483,7 +479,7 @@ impl Document {
     pub fn add_font_family(
         &mut self,
         font_family: fonts::FontFamily<fonts::FontData>,
-    ) -> Result<fonts::FontFamily<fonts::Font>, error::Error> {
+    ) -> fonts::FontFamily<fonts::Font> {
         self.font_cache.add_font_family(font_family)
     }
 

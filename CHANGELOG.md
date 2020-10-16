@@ -19,6 +19,9 @@ SPDX-License-Identifier: CC0-1.0
       function.
     - Change the arguments of the `FontCache::new` and `Decorator::new`
       methods.
+  - Make the `Document::new`, `Document::add_font_family`, `FontCache::new`,
+    `FontCache::add_font`, `FontCache::add_font_family` and `Font::new` methods
+    infallible.
 
 # v0.1.1 (2020-10-16)
 

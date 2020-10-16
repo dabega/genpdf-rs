@@ -40,15 +40,13 @@ fn main() {
     let monospace_font = fonts::from_files(FONT_DIR, MONO_FONT_NAME)
         .expect("Failed to load the monospace font family");
 
-    let mut doc = genpdf::Document::new(default_font).expect("Failed to create document");
+    let mut doc = genpdf::Document::new(default_font);
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
     doc.set_margins(10);
     doc.set_line_spacing(1.25);
 
-    let monospace = doc
-        .add_font_family(monospace_font)
-        .expect("Failed to add monospace font family to document");
+    let monospace = doc.add_font_family(monospace_font);
     let code = style::Style::from(monospace).bold();
     let red = style::Color::Rgb(255, 0, 0);
     let blue = style::Color::Rgb(0, 0, 255);
