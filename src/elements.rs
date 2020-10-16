@@ -8,7 +8,7 @@
 //!
 //! It includes the following elements:
 //! - Containers:
-//!   - [`LinearLayout`][]: arranges its elements sequentaally
+//!   - [`LinearLayout`][]: arranges its elements sequentially
 //!   - [`TableLayout`][]: arranges its elements in columns and rows
 //!   - [`OrderedList`][] and [`UnorderedList`][]: arrange their elements sequentially with bullet
 //!     points
@@ -45,7 +45,7 @@ use crate::style::{Style, StyledString};
 use crate::wrap;
 use crate::{Element, Margins, Mm, Position, RenderResult, Size};
 
-/// Arranges a list of elements sequentually.
+/// Arranges a list of elements sequentially.
 ///
 /// Currently, elements can only be arranged vertically.
 ///
