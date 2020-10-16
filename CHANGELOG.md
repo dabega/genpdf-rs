@@ -9,6 +9,7 @@ SPDX-License-Identifier: CC0-1.0
 
 - Improve the font handling:
   - Make `FontFamily` generic over the font data type.
+  - Make the fields of the `FontFamily` struct public.
 
 # v0.1.1 (2020-10-16)
 

@@ -168,10 +168,14 @@ impl FontCache {
 /// See the [module documentation](index.html) for details on the internals.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FontFamily<T: Clone + Copy + fmt::Debug + PartialEq> {
-    regular: T,
-    bold: T,
-    italic: T,
-    bold_italic: T,
+    /// The regular variant of this font family.
+    pub regular: T,
+    /// The bold variant of this font family.
+    pub bold: T,
+    /// The italic variant of this font family.
+    pub italic: T,
+    /// The bold italic variant of this font family.
+    pub bold_italic: T,
 }
 
 impl<T: Clone + Copy + fmt::Debug + PartialEq> FontFamily<T> {
