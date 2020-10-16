@@ -3,7 +3,12 @@ SPDX-FileCopyrightText: 2020 Robin Krahl <robin.krahl@ireas.org>
 SPDX-License-Identifier: CC0-1.0
 -->
 
-# Unreleased
+# v0.1.1 (2020-10-16)
+
+This patch release adds some trait implementations and utility functions and
+improves the crate documentation.
+
+Thanks to Matteo Bertini for contributions.
 
 - Implement `From<&String>` for `StyledString`.
 - Derive `Add`, `AddAssign`, `Sub` and `SubAssign` for `Position` and `Size`.
