@@ -156,8 +156,6 @@ use derive_more::{
     Add, AddAssign, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign, Sum,
 };
 
-use crate::error::{Error, ErrorKind};
-
 /// A length measured in millimeters.
 ///
 /// `genpdf` always uses millimeters as its length unit, except for the font size that is measured
@@ -463,7 +461,7 @@ impl Document {
     pub fn new(
         font_dir: impl AsRef<path::Path>,
         font_name: impl AsRef<str>,
-    ) -> Result<Document, Error> {
+    ) -> Result<Document, error::Error> {
         Ok(Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
@@ -493,7 +491,7 @@ impl Document {
         &mut self,
         dir: impl AsRef<path::Path>,
         name: &str,
-    ) -> Result<fonts::FontFamily, Error> {
+    ) -> Result<fonts::FontFamily, error::Error> {
         self.font_cache.load_font_family(dir, name)
     }
 
@@ -580,7 +578,7 @@ impl Document {
     /// The given writer is always wrapped in a buffered writer.  For details on the rendering
     /// process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
-    pub fn render(mut self, w: impl io::Write) -> Result<(), Error> {
+    pub fn render(mut self, w: impl io::Write) -> Result<(), error::Error> {
         let mut renderer = render::Renderer::new(self.paper_size, &self.title)?;
         if let Some(conformance) = self.conformance {
             renderer = renderer.with_conformance(conformance);
@@ -594,9 +592,9 @@ impl Document {
             let result = self.root.render(&self.font_cache, area, self.style)?;
             if result.has_more {
                 if result.size == Size::new(0, 0) {
-                    return Err(Error::new(
+                    return Err(error::Error::new(
                         "Could not fit an element on a new page",
-                        ErrorKind::PageSizeExceeded,
+                        error::ErrorKind::PageSizeExceeded,
                     ));
                 }
                 renderer.add_page(PaperSize::A4);
@@ -613,10 +611,11 @@ impl Document {
     ///
     /// For details on the rendering process, see the [Rendering Process section of the crate
     /// documentation](index.html#rendering-process).
-    pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), Error> {
+    pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
         let path = path.as_ref();
-        let file = fs::File::create(path)
-            .map_err(|err| Error::new(format!("Could not create file {}", path.display()), err))?;
+        let file = fs::File::create(path).map_err(|err| {
+            error::Error::new(format!("Could not create file {}", path.display()), err)
+        })?;
         self.render(file)
     }
 }
@@ -691,7 +690,7 @@ pub trait Element {
         font_cache: &fonts::FontCache,
         area: render::Area<'_>,
         style: style::Style,
-    ) -> Result<RenderResult, Error>;
+    ) -> Result<RenderResult, error::Error>;
 
     /// Draws a frame around this element.
     fn framed(self) -> elements::FramedElement<Self>
