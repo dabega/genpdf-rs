@@ -54,7 +54,7 @@ use crate::Mm;
 /// [`FontFamily`]: struct.FontFamily.html
 #[derive(Debug)]
 pub struct FontCache {
-    fonts: Vec<(path::PathBuf, rusttype::Font<'static>)>,
+    fonts: Vec<FontData>,
     pdf_fonts: Vec<printpdf::IndirectFontRef>,
     // We have to use an option because we first have to construct the FontCache before we can load
     // a font, but the default font is always loaded in new, so this options is always some
@@ -91,17 +91,15 @@ impl FontCache {
         font_file.read_to_end(&mut buf).map_err(|err| {
             Error::new(format!("Failed to read font file {}", path.display()), err)
         })?;
-        let rt_font = rusttype::Font::from_bytes(buf).map_err(|err| {
+        let font_data = FontData::new(buf).map_err(|err| {
             Error::new(
                 format!("Failed to load rusttype font from file {}", path.display()),
                 err,
             )
         })?;
-        let font = Font::new(self.fonts.len(), &rt_font);
-        if font.is_ok() {
-            self.fonts.push((path.to_owned(), rt_font));
-        }
-        font
+        let font = Font::new(self.fonts.len(), &font_data.rt_font)?;
+        self.fonts.push(font_data);
+        Ok(font)
     }
 
     /// Loads the font family at the given path with the given name.
@@ -129,8 +127,11 @@ impl FontCache {
     /// reference to them.
     pub fn load_pdf_fonts(&mut self, renderer: &render::Renderer) -> Result<(), Error> {
         self.pdf_fonts.clear();
-        for (path, _) in &self.fonts {
-            self.pdf_fonts.push(renderer.load_font(path)?);
+        for font in &self.fonts {
+            let pdf_font = match &font.raw_data {
+                RawFontData::Embedded(data) => renderer.load_font(&data)?,
+            };
+            self.pdf_fonts.push(pdf_font);
         }
         Ok(())
     }
@@ -159,8 +160,37 @@ impl FontCache {
     ///
     /// [`Font`]: struct.Font.html
     pub fn get_rt_font(&self, font: Font) -> &rusttype::Font<'static> {
-        &self.fonts[font.idx].1
+        &self.fonts[font.idx].rt_font
     }
+}
+
+/// The data for a font that is cached by a [`FontCache`][].
+///
+/// [`FontCache`]: struct.FontCache.html
+#[derive(Clone, Debug)]
+pub struct FontData {
+    rt_font: rusttype::Font<'static>,
+    raw_data: RawFontData,
+}
+
+impl FontData {
+    /// Loads a font from the given data.
+    ///
+    /// The provided data must by readable by [`rusttype`][].
+    ///
+    /// [`rusttype`]: https://docs.rs/rusttype
+    pub fn new(data: Vec<u8>) -> Result<FontData, rusttype::Error> {
+        let rt_font = rusttype::Font::from_bytes(data.clone())?;
+        Ok(FontData {
+            rt_font,
+            raw_data: RawFontData::Embedded(data),
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+enum RawFontData {
+    Embedded(Vec<u8>),
 }
 
 /// A collection of fonts with different styles.

@@ -10,6 +10,7 @@ SPDX-License-Identifier: CC0-1.0
 - Improve the font handling:
   - Make `FontFamily` generic over the font data type.
   - Make the fields of the `FontFamily` struct public.
+  - Load the PDF font in `Renderer::load_font` from bytes instead of a path.
 
 # v0.1.1 (2020-10-16)
 

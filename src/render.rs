@@ -18,9 +18,7 @@
 //! [`Area`]: struct.Area.html
 //! [`TextSection`]: struct.TextSection.html
 
-use std::fs;
 use std::io;
-use std::path;
 
 use crate::error::Error;
 use crate::fonts;
@@ -111,22 +109,12 @@ impl Renderer {
         &mut self.pages[idx]
     }
 
-    /// Loads the font at the given path, adds it to the generated document and returns a reference
-    /// to it.
-    pub fn load_font(
-        &self,
-        path: impl AsRef<path::Path>,
-    ) -> Result<printpdf::IndirectFontRef, Error> {
-        let path = path.as_ref();
-        let font_file = fs::File::open(path).map_err(|err| {
-            Error::new(format!("Failed to open font file {}", path.display()), err)
-        })?;
-        self.doc.add_external_font(font_file).map_err(|err| {
-            Error::new(
-                format!("Failed to load PDF font from file {}", path.display()),
-                err,
-            )
-        })
+    /// Loads the font from the given data, adds it to the generated document and returns a
+    /// reference to it.
+    pub fn load_font(&self, data: &[u8]) -> Result<printpdf::IndirectFontRef, Error> {
+        self.doc
+            .add_external_font(data)
+            .map_err(|err| Error::new("Failed to load PDF font", err))
     }
 
     /// Writes this PDF document to a writer.
