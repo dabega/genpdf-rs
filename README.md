@@ -57,6 +57,8 @@ These features are currently not supported but planned for future versions:
 - Hyphenation
 - Easier font lookup
 
+See also the [`genpdf-rs` issue tracker](https://todo.sr.ht/~ireas/genpdf-rs).
+
 ## Alternatives
 
 - [`printpdf`][] is the low-level PDF library used by `genpdf`.  It provides
@@ -90,6 +92,11 @@ mailing list [~ireas/public-inbox@lists.sr.ht][] ([archive][]) using the
 [~ireas/public-inbox@lists.sr.ht]: mailto:~ireas/public-inbox@lists.sr.ht
 [archive]: https://lists.sr.ht/~ireas/public-inbox
 [Contributing Guide]: https://man.sr.ht/~ireas/guides/contributing.md
+
+If you are looking for a good starting point, have a look at the [issues with
+the label “good first issue”][issues] in `genpdf-rs`’s issue tracker.
+
+[issues]: https://todo.sr.ht/~ireas/genpdf-rs?search=label:%22good%20first%20issue%22%20status%3Aopen
 
 ## Contact
 
