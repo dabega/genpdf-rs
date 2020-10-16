@@ -497,6 +497,16 @@ impl Document {
         self.font_cache.load_font_family(dir, name)
     }
 
+    /// Returns the font cache used by this document.
+    ///
+    /// You can use the font cache to get the default font and to query glyph metrics for a font.
+    /// Use the [`load_font_family`][] method instead if you want to add fonts to this document.
+    ///
+    /// [`load_font_family`]: #method.load_font_family
+    pub fn font_cache(&self) -> &fonts::FontCache {
+        &self.font_cache
+    }
+
     /// Sets the title of the PDF document.
     ///
     /// If this method is not called, the PDF title will be empty.

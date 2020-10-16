@@ -10,6 +10,7 @@ SPDX-License-Identifier: CC0-1.0
 - Implement `From<Position>` for `printpdf::Point`.
 - Add `split_horizontally` method to `Area`.
 - Add `width` method to `StyledString` and `StyledStr`.
+- Add `font_cache` method to `Document`.
 
 # v0.1.0 (2020-10-15)
 
