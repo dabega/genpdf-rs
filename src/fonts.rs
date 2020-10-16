@@ -16,6 +16,19 @@
 //! returns a reference to the cached data that you then can use with the [`Style`][] struct to
 //! change the font family of an element.
 //!
+//! There are two methods for using fonts in a PDF font:  You can either embed the font data into
+//! the PDF file.  Or you can use one of the three built-in font families ([`Builtin`][]) that PDF
+//! viewers are expected to support.  You can choose between the two methods when loading the font
+//! ([`from_files`][], [`FontData::load`][], [`FontData::new`][]).
+//!
+//! If you choose a built-in font family, you still have to provide the font data so that `genpdf`
+//! has access to its glyph metrics.  Note that it is sufficient to use a font that is metrically
+//! identical to the built-in font.  For example, you can use the Liberation fonts instad of the
+//! proprietary Helvetica, Times and Courier fonts.
+//!
+//! Due to a limitation in [`printpdf`][], you can currently only use built-in fonts with ASCII
+//! text ([upstream issue](https://github.com/fschutt/printpdf/issues/30)).
+//!
 //! **Note:**  The [`Font`][] and [`FontFamily<Font>`][`FontFamily`] structs are only valid for the
 //! [`FontCache`][] they have been created with.  If you dont use the low-level [`render`][] module
 //! directly, only use the [`Document::add_font_family`][] method to add fonts!
@@ -37,6 +50,7 @@
 //! [`Document::add_font_family`]: ../struct.Document.html#method.add_font_family
 //! [`Style`]: ../style/struct.Style.html
 //! [`from_files`]: fn.from_files.html
+//! [`Builtin`]: enum.Builtin.html
 //! [`FontCache`]: struct.FontCache.html
 //! [`FontCache::load_pdf_fonts`]: struct.FontCache.html#method.load_pdf_fonts
 //! [`FontData`]: struct.FontData.html
@@ -46,6 +60,7 @@
 //! [`FontFamily`]: struct.FontFamily.html
 //! [`rusttype`]: https://docs.rs/rusttype
 //! [`rusttype::Font`]: https://docs.rs/rusttype/0.8.3/rusttype/struct.Font.html
+//! [`printpdf`]: https://docs.rs/printpdf
 //! [`printpdf::IndirectFontRef`]: https://docs.rs/printpdf/0.3.2/printpdf/types/plugins/graphics/two_dimensional/font/struct.IndirectFontRef.html
 
 use std::fmt;
@@ -89,7 +104,11 @@ impl FontCache {
 
     /// Adds the given font to the cache and returns a reference to it.
     pub fn add_font(&mut self, font_data: FontData) -> Font {
-        let font = Font::new(self.fonts.len(), &font_data.rt_font);
+        let is_builtin = match &font_data.raw_data {
+            RawFontData::Builtin(_) => true,
+            RawFontData::Embedded(_) => false,
+        };
+        let font = Font::new(self.fonts.len(), is_builtin, &font_data.rt_font);
         self.fonts.push(font_data);
         font
     }
@@ -110,7 +129,8 @@ impl FontCache {
         self.pdf_fonts.clear();
         for font in &self.fonts {
             let pdf_font = match &font.raw_data {
-                RawFontData::Embedded(data) => renderer.load_font(&data)?,
+                RawFontData::Builtin(builtin) => renderer.add_builtin_font(*builtin)?,
+                RawFontData::Embedded(data) => renderer.add_embedded_font(&data)?,
             };
             self.pdf_fonts.push(pdf_font);
         }
@@ -157,11 +177,19 @@ pub struct FontData {
 impl FontData {
     /// Loads a font from the given data.
     ///
-    /// The provided data must by readable by [`rusttype`][].
+    /// The provided data must by readable by [`rusttype`][].  If `builtin` is set, a built-in PDF
+    /// font is used instead of embedding the font in the PDF file (see the [module
+    /// documentation](index.html) for more information).  In this case, the given font must be
+    /// metrically identical to the built-in font.
     ///
     /// [`rusttype`]: https://docs.rs/rusttype
-    pub fn new(data: Vec<u8>) -> Result<FontData, Error> {
-        let rt_font = rusttype::Font::from_bytes(data.clone())
+    pub fn new(data: Vec<u8>, builtin: Option<printpdf::BuiltinFont>) -> Result<FontData, Error> {
+        let raw_data = if let Some(builtin) = builtin {
+            RawFontData::Builtin(builtin)
+        } else {
+            RawFontData::Embedded(data.clone())
+        };
+        let rt_font = rusttype::Font::from_bytes(data)
             .map_err(|err| Error::new("Failed to read rusttype font", err))?;
         if rt_font.units_per_em() == 0 {
             Err(Error::new(
@@ -169,19 +197,22 @@ impl FontData {
                 ErrorKind::InvalidFont,
             ))
         } else {
-            Ok(FontData {
-                rt_font,
-                raw_data: RawFontData::Embedded(data),
-            })
+            Ok(FontData { rt_font, raw_data })
         }
     }
 
     /// Loads the font at the given path.
     ///
-    /// The path must point to a file that can be read by [`rusttype`][].
+    /// The path must point to a file that can be read by [`rusttype`][].  If `builtin` is set, a
+    /// built-in PDF font is used instead of embedding the font in the PDF file (see the [module
+    /// documentation](index.html) for more information).  In this case, the given font must be
+    /// metrically identical to the built-in font.
     ///
     /// [`rusttype`]: https://docs.rs/rusttype
-    pub fn load(path: impl AsRef<path::Path>) -> Result<FontData, Error> {
+    pub fn load(
+        path: impl AsRef<path::Path>,
+        builtin: Option<printpdf::BuiltinFont>,
+    ) -> Result<FontData, Error> {
         use std::io::Read as _;
 
         let path = path.as_ref();
@@ -192,13 +223,80 @@ impl FontData {
         font_file.read_to_end(&mut buf).map_err(|err| {
             Error::new(format!("Failed to read font file {}", path.display()), err)
         })?;
-        FontData::new(buf)
+        FontData::new(buf, builtin)
     }
 }
 
 #[derive(Clone, Debug)]
 enum RawFontData {
+    Builtin(printpdf::BuiltinFont),
     Embedded(Vec<u8>),
+}
+
+#[derive(Clone, Copy, Debug)]
+enum FontStyle {
+    Regular,
+    Bold,
+    Italic,
+    BoldItalic,
+}
+
+impl FontStyle {
+    fn name(&self) -> &'static str {
+        match self {
+            FontStyle::Regular => "Regular",
+            FontStyle::Bold => "Bold",
+            FontStyle::Italic => "Italic",
+            FontStyle::BoldItalic => "BoldItalic",
+        }
+    }
+}
+
+impl fmt::Display for FontStyle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// A built-in font family.
+///
+/// A PDF viewer typically supports three font families that don’t have to be embedded into the PDF
+/// file:  Times, Helvetica and Courier.
+///
+/// See the [module documentation](index.html) for more information.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Builtin {
+    /// The Times font family.
+    Times,
+    /// The Helvetica font family.
+    Helvetica,
+    /// The Courier font family.
+    Courier,
+}
+
+impl Builtin {
+    fn style(&self, style: FontStyle) -> printpdf::BuiltinFont {
+        match self {
+            Builtin::Times => match style {
+                FontStyle::Regular => printpdf::BuiltinFont::TimesRoman,
+                FontStyle::Bold => printpdf::BuiltinFont::TimesBold,
+                FontStyle::Italic => printpdf::BuiltinFont::TimesItalic,
+                FontStyle::BoldItalic => printpdf::BuiltinFont::TimesBoldItalic,
+            },
+            Builtin::Helvetica => match style {
+                FontStyle::Regular => printpdf::BuiltinFont::Helvetica,
+                FontStyle::Bold => printpdf::BuiltinFont::HelveticaBold,
+                FontStyle::Italic => printpdf::BuiltinFont::HelveticaOblique,
+                FontStyle::BoldItalic => printpdf::BuiltinFont::HelveticaBoldOblique,
+            },
+            Builtin::Courier => match style {
+                FontStyle::Regular => printpdf::BuiltinFont::Courier,
+                FontStyle::Bold => printpdf::BuiltinFont::CourierBold,
+                FontStyle::Italic => printpdf::BuiltinFont::CourierOblique,
+                FontStyle::BoldItalic => printpdf::BuiltinFont::CourierBoldOblique,
+            },
+        }
+    }
 }
 
 /// A collection of fonts with different styles.
@@ -239,13 +337,14 @@ impl<T: Clone + Copy + fmt::Debug + PartialEq> FontFamily<T> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Font {
     idx: usize,
+    is_builtin: bool,
     scale: f32,
     line_height: Mm,
     glyph_height: Mm,
 }
 
 impl Font {
-    fn new(idx: usize, rt_font: &rusttype::Font<'static>) -> Font {
+    fn new(idx: usize, is_builtin: bool, rt_font: &rusttype::Font<'static>) -> Font {
         assert!(rt_font.units_per_em() != 0);
         let scale = f32::from(rt_font.units_per_em());
         let v_metrics = rt_font.v_metrics_unscaled() * (1.0 / scale);
@@ -253,10 +352,16 @@ impl Font {
         let line_height = glyph_height + v_metrics.line_gap;
         Font {
             idx,
+            is_builtin,
             scale,
             line_height: printpdf::Pt(f64::from(line_height)).into(),
             glyph_height: printpdf::Pt(f64::from(glyph_height)).into(),
         }
+    }
+
+    /// Returns whether this font is a built-in PDF font.
+    pub fn is_builtin(&self) -> bool {
+        self.is_builtin
     }
 
     /// Returns the line height for text with this font and the given font size.
@@ -297,6 +402,19 @@ impl Font {
     }
 }
 
+fn from_file(
+    dir: impl AsRef<path::Path>,
+    name: &str,
+    style: FontStyle,
+    builtin: Option<Builtin>,
+) -> Result<FontData, Error> {
+    let builtin = builtin.map(|b| b.style(style));
+    FontData::load(
+        &dir.as_ref().join(format!("{}-{}.ttf", name, style)),
+        builtin,
+    )
+}
+
 /// Loads the font family at the given path with the given name.
 ///
 /// This method assumes that at the given path, these files exist and are valid font files:
@@ -304,12 +422,20 @@ impl Font {
 /// - `{name}-Bold.ttf`
 /// - `{name}-Italic.ttf`
 /// - `{name}-BoldItalic.ttf`
-pub fn from_files(dir: impl AsRef<path::Path>, name: &str) -> Result<FontFamily<FontData>, Error> {
+///
+/// If `builtin` is set, built-in PDF fonts are used instead of embedding the fonts in the PDF file
+/// (see the [module documentation](index.html) for more information).  In this case, the given
+/// fonts must be metrically identical to the built-in fonts.
+pub fn from_files(
+    dir: impl AsRef<path::Path>,
+    name: &str,
+    builtin: Option<Builtin>,
+) -> Result<FontFamily<FontData>, Error> {
     let dir = dir.as_ref();
     Ok(FontFamily {
-        regular: FontData::load(&dir.join(format!("{}-Regular.ttf", name)))?,
-        bold: FontData::load(&dir.join(format!("{}-Bold.ttf", name)))?,
-        italic: FontData::load(&dir.join(format!("{}-Italic.ttf", name)))?,
-        bold_italic: FontData::load(&dir.join(format!("{}-BoldItalic.ttf", name)))?,
+        regular: from_file(dir, name, FontStyle::Regular, builtin)?,
+        bold: from_file(dir, name, FontStyle::Bold, builtin)?,
+        italic: from_file(dir, name, FontStyle::Italic, builtin)?,
+        bold_italic: from_file(dir, name, FontStyle::BoldItalic, builtin)?,
     })
 }

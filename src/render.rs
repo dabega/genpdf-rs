@@ -20,7 +20,7 @@
 
 use std::io;
 
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, Style};
 use crate::{Margins, Mm, Position, Size};
@@ -111,7 +111,18 @@ impl Renderer {
 
     /// Loads the font from the given data, adds it to the generated document and returns a
     /// reference to it.
-    pub fn load_font(&self, data: &[u8]) -> Result<printpdf::IndirectFontRef, Error> {
+    pub fn add_builtin_font(
+        &self,
+        builtin: printpdf::BuiltinFont,
+    ) -> Result<printpdf::IndirectFontRef, Error> {
+        self.doc
+            .add_builtin_font(builtin)
+            .map_err(|err| Error::new("Failed to load PDF font", err))
+    }
+
+    /// Loads the font from the given data, adds it to the generated document and returns a
+    /// reference to it.
+    pub fn add_embedded_font(&self, data: &[u8]) -> Result<printpdf::IndirectFontRef, Error> {
         self.doc
             .add_external_font(data)
             .map_err(|err| Error::new("Failed to load PDF font", err))
@@ -322,12 +333,12 @@ impl<'a> Area<'a> {
         position: Position,
         style: Style,
         s: S,
-    ) -> bool {
+    ) -> Result<bool, Error> {
         if let Ok(mut section) = self.text_section(font_cache, position, style) {
-            section.print_str(s, style);
-            true
+            section.print_str(s, style)?;
+            Ok(true)
         } else {
-            false
+            Ok(false)
         }
     }
 
@@ -413,7 +424,18 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
     /// Prints the given string with the given style.
     ///
     /// The font cache for this text section must contain the PDF font for the given style.
-    pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) {
+    pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
+        let font = style.font(self.font_cache);
+        if font.is_builtin() && !s.as_ref().is_ascii() {
+            return Err(Error::new(
+                format!(
+                    "Tried to print a non-ASCII string with a built-in font: {}",
+                    s.as_ref()
+                ),
+                ErrorKind::UnsupportedEncoding,
+            ));
+        }
+
         let font = self
             .font_cache
             .get_pdf_font(style.font(self.font_cache))
@@ -426,6 +448,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
         self.fill_color = style.color();
         self.layer().set_font(font, style.font_size().into());
         self.layer().write_text(s.as_ref(), font);
+        Ok(())
     }
 
     fn layer(&self) -> &printpdf::PdfLayerReference {

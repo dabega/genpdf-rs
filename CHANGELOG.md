@@ -22,6 +22,10 @@ SPDX-License-Identifier: CC0-1.0
   - Make the `Document::new`, `Document::add_font_family`, `FontCache::new`,
     `FontCache::add_font`, `FontCache::add_font_family` and `Font::new` methods
     infallible.
+  - Add support for built-in fonts.
+    - Added the `Error::UnsupportedEncoding` variant.
+    - Change the return type of the `Area::print_str` and
+      `TextSection::print_str` methods to return a `Result`.
 
 # v0.1.1 (2020-10-16)
 

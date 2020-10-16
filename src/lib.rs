@@ -16,7 +16,7 @@
 //!
 //! ```no_run
 //! // Load a font from the file system
-//! let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
+//! let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
 //!     .expect("Failed to load font family");
 //! // Create a document and set the default font family
 //! let mut doc = genpdf::Document::new(font_family);
@@ -113,7 +113,8 @@
 //!   `printpdf` then adds all available glyphs for these fonts to the document, even if they are
 //!   not used in the document.  This increases the file size by 100–200 KiB per font (500–1000 KiB
 //!   per font family).  Until this is fixed, you can pass the generated file through `ps2pdf` to
-//!   significantly reduce its size.
+//!   significantly reduce its size.  Alternatively, you can use a built-in font if you don’t need
+//!   non-ASCII characters.
 //!
 //! [`printpdf`]: https://docs.rs/printpdf
 //! [`rusttype`]: https://docs.rs/rusttype
@@ -433,7 +434,7 @@ impl<T: Into<Mm>> From<T> for Margins {
 ///
 /// ```no_run
 /// // Load a font from the file system
-/// let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
+/// let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
 ///     .expect("Failed to load font family");
 /// // Create a document and set the default font family
 /// let mut doc = genpdf::Document::new(font_family);

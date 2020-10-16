@@ -45,6 +45,7 @@ impl error::Error for Error {
             ErrorKind::InvalidData => None,
             ErrorKind::InvalidFont => None,
             ErrorKind::PageSizeExceeded => None,
+            ErrorKind::UnsupportedEncoding => None,
             ErrorKind::IoError(err) => Some(err),
             ErrorKind::PrintpdfError(err) => Some(err),
             ErrorKind::RusttypeError(err) => Some(err),
@@ -64,6 +65,8 @@ pub enum ErrorKind {
     InvalidFont,
     /// An element exceeds the page size and could not be printed.
     PageSizeExceeded,
+    /// A non-ASCII string was used with a built-in font.
+    UnsupportedEncoding,
     /// An IO error.
     IoError(io::Error),
     /// An error caused by `printpdf`.

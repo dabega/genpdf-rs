@@ -159,7 +159,7 @@ impl Element for Text {
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
         style.merge(self.text.style);
-        if area.print_str(font_cache, Position::default(), style, &self.text.s) {
+        if area.print_str(font_cache, Position::default(), style, &self.text.s)? {
             result.size = Size::new(
                 style.str_width(font_cache, &self.text.s),
                 style.line_height(font_cache),
@@ -325,7 +325,7 @@ impl Element for Paragraph {
             // TODO: calculate the maximum line height
             if let Ok(mut section) = area.text_section(font_cache, position, style) {
                 for s in line {
-                    section.print_str(&s.s, s.style);
+                    section.print_str(&s.s, s.style)?;
                     self.render_offset += s.s.len();
                     while self.render_idx < self.text.len()
                         && self.render_offset >= self.text[self.render_idx].s.len()
@@ -822,7 +822,7 @@ impl<E: Element> Element for BulletPoint<E> {
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
                 self.bullet.as_str(),
-            );
+            )?;
             self.bullet_rendered = true;
         }
         Ok(result)
