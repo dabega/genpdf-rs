@@ -19,9 +19,11 @@ written in Rust, so you don’t need any pre-installed libraries or tools.
 
 <!-- Keep in sync with src/lib.rs -->
 ```rust
+// Load a font from the file system
+let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
+    .expect("Failed to load font family");
 // Create a document and set the default font family
-let mut doc = genpdf::Document::new("./fonts", "Liberation")
-    .expect("Failed to create PDF document");
+let mut doc = genpdf::Document::new(font_family);
 // Change the default settings
 doc.set_margins(10);
 doc.set_title("Demo document");

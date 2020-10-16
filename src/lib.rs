@@ -14,6 +14,7 @@
 //! [`Element`][] implementations to it.  Then call the [`Document::render_to_file`][] method to
 //! render the document and to write it to a file.
 //!
+//! <!-- Keep in sync with README.md -->
 //! ```no_run
 //! // Load a font from the file system
 //! let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
