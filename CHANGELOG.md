@@ -11,6 +11,14 @@ SPDX-License-Identifier: CC0-1.0
   - Make `FontFamily` generic over the font data type.
   - Make the fields of the `FontFamily` struct public.
   - Load the PDF font in `Renderer::load_font` from bytes instead of a path.
+  - Separate font loading and font caching:
+    - Replace the `load_font` and `load_font_family` methods of the `FontCache`
+      struct with `add_font` and `add_font_family`, and the `load_font_family`
+      method of `Document` with `add_font_family`.
+    - Add the `FontData::load` method and the `fonts::load_from_files`
+      function.
+    - Change the arguments of the `FontCache::new` and `Decorator::new`
+      methods.
 
 # v0.1.1 (2020-10-16)
 

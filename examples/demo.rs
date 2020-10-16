@@ -16,7 +16,7 @@
 use std::env;
 
 use genpdf::Element as _;
-use genpdf::{elements, style};
+use genpdf::{elements, fonts, style};
 
 const FONT_DIR: &'static str = "/usr/share/fonts/truetype/liberation";
 const DEFAULT_FONT_NAME: &'static str = "LiberationSans";
@@ -35,16 +35,20 @@ fn main() {
     }
     let output_file = &args[0];
 
-    let mut doc =
-        genpdf::Document::new(FONT_DIR, DEFAULT_FONT_NAME).expect("Failed to create document");
-    let monospace = doc
-        .load_font_family(FONT_DIR, MONO_FONT_NAME)
-        .expect("Failed to load monospace font");
+    let default_font = fonts::from_files(FONT_DIR, DEFAULT_FONT_NAME)
+        .expect("Failed to load the default font family");
+    let monospace_font = fonts::from_files(FONT_DIR, MONO_FONT_NAME)
+        .expect("Failed to load the monospace font family");
+
+    let mut doc = genpdf::Document::new(default_font).expect("Failed to create document");
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
     doc.set_margins(10);
     doc.set_line_spacing(1.25);
 
+    let monospace = doc
+        .add_font_family(monospace_font)
+        .expect("Failed to add monospace font family to document");
     let code = style::Style::from(monospace).bold();
     let red = style::Color::Rgb(255, 0, 0);
     let blue = style::Color::Rgb(0, 0, 255);

@@ -3,22 +3,30 @@
 
 //! Fonts, font families and a font cache.
 //!
-//! The [`FontCache`][] caches all loaded fonts.  Fonts are loaded from TTF files with the
-//! [`Document::load_font_family`][] method and stored in the [`FontCache`][].  A [`Font`][] is a
-//! reference to a cached font in the [`FontCache`][].  A [`FontFamily`][] is a collection of a
-//! regular, a bold, an italic and a bold italic font.
+//! Before you can use a font in a PDF document, you have to load the [`FontData`][] for it, either
+//! from a file ([`FontData::load`][]) or from bytes ([`FontData::new`][]).  See the [`rusttype`][]
+//! crate for the supported data formats.  Use the [`from_files`][] function to load a font family
+//! from a set of files following the default naming conventions.
 //!
-//! **Note:**  The [`Font`][] and [`FontFamily`][] structs are only valid for the [`FontCache`][]
-//! they have been created with.  If you dont use the low-level [`render`][] module directly, only
-//! use the [`Document::load_font_family`][] method to load fonts!
+//! The [`FontCache`][] caches all loaded fonts.  A [`Font`][] is a reference to a cached font in
+//! the [`FontCache`][].  A [`FontFamily`][] is a collection of a regular, a bold, an italic and a
+//! bold italic font (raw data or cached).
+//!
+//! Add fonts to a document’s font cache by calling [`Document::add_font_family`][].  This method
+//! returns a reference to the cached data that you then can use with the [`Style`][] struct to
+//! change the font family of an element.
+//!
+//! **Note:**  The [`Font`][] and [`FontFamily<Font>`][`FontFamily`] structs are only valid for the
+//! [`FontCache`][] they have been created with.  If you dont use the low-level [`render`][] module
+//! directly, only use the [`Document::add_font_family`][] method to add fonts!
 //!
 //! # Internals
 //!
-//! There are two types of font data: A [`rusttype::Font`][] is used to calculate the size of
-//! formatted text.  It can be loaded at any time using the [`FontCache::load_font`][]
-//! method.  Once the PDF document is rendered, a [`printpdf::IndirectFontRef`][] is used to draw
-//! text in the PDF document.  Before a font can be used in a PDF document, it has to be embedded
-//! using the [`FontCache::load_pdf_fonts`][] method.
+//! There are two types of font data: A [`FontData`][] instance stores information about the glyph
+//! metrics that is used to calculate the text size.  It can be loaded at any time using the
+//! [`FontData::load`][] and [`FontData::new`][] methods.  Once the PDF document is rendered, a
+//! [`printpdf::IndirectFontRef`][] is used to draw text in the PDF document.  Before a font can be
+//! used in a PDF document, it has to be embedded using the [`FontCache::load_pdf_fonts`][] method.
 //!
 //! If you use the high-level interface provided by [`Document`][] to generate a PDF document, these
 //! steps are done automatically.  You only have to manually populate the font cache if you use the
@@ -26,12 +34,17 @@
 //!
 //! [`render`]: ../render/
 //! [`Document`]: ../struct.Document.html
-//! [`Document::load_font_family`]: ../struct.Document.html#method.load_font_family
+//! [`Document::add_font_family`]: ../struct.Document.html#method.add_font_family
+//! [`Style`]: ../style/struct.Style.html
+//! [`from_files`]: fn.from_files.html
 //! [`FontCache`]: struct.FontCache.html
-//! [`FontCache::load_font`]: struct.FontCache.html#load_font
-//! [`FontCache::load_pdf_fonts`]: struct.FontCache.html#load_pdf_fonts
+//! [`FontCache::load_pdf_fonts`]: struct.FontCache.html#method.load_pdf_fonts
+//! [`FontData`]: struct.FontData.html
+//! [`FontData::new`]: struct.FontData.html#method.new
+//! [`FontData::load`]: struct.FontData.html#method.load
 //! [`Font`]: struct.Font.html
 //! [`FontFamily`]: struct.FontFamily.html
+//! [`rusttype`]: https://docs.rs/rusttype
 //! [`rusttype::Font`]: https://docs.rs/rusttype/0.8.3/rusttype/struct.Font.html
 //! [`printpdf::IndirectFontRef`]: https://docs.rs/printpdf/0.3.2/printpdf/types/plugins/graphics/two_dimensional/font/struct.IndirectFontRef.html
 
@@ -63,63 +76,34 @@ pub struct FontCache {
 }
 
 impl FontCache {
-    /// Creates a new font cache, loads the font family at the given path and with the given name
-    /// and sets that font family as the default.
-    pub fn new(
-        default_dir: impl AsRef<path::Path>,
-        default_name: &str,
-    ) -> Result<FontCache, Error> {
+    /// Creates a new font cache with the given default font family.
+    pub fn new(default_font_family: FontFamily<FontData>) -> Result<FontCache, Error> {
         let mut font_cache = FontCache {
             fonts: Vec::new(),
             pdf_fonts: Vec::new(),
             default_font_family: None,
         };
-        font_cache.default_font_family =
-            Some(font_cache.load_font_family(default_dir, default_name)?);
+        font_cache.default_font_family = Some(font_cache.add_font_family(default_font_family)?);
         Ok(font_cache)
     }
 
-    /// Loads the font at the given path.
-    pub fn load_font(&mut self, path: impl AsRef<path::Path>) -> Result<Font, Error> {
-        use std::io::Read as _;
-
-        let path = path.as_ref();
-        let mut font_file = fs::File::open(path).map_err(|err| {
-            Error::new(format!("Failed to open font file {}", path.display()), err)
-        })?;
-        let mut buf = Vec::new();
-        font_file.read_to_end(&mut buf).map_err(|err| {
-            Error::new(format!("Failed to read font file {}", path.display()), err)
-        })?;
-        let font_data = FontData::new(buf).map_err(|err| {
-            Error::new(
-                format!("Failed to load rusttype font from file {}", path.display()),
-                err,
-            )
-        })?;
+    /// Adds the given font to the cache and returns a reference to it.
+    pub fn add_font(&mut self, font_data: FontData) -> Result<Font, Error> {
         let font = Font::new(self.fonts.len(), &font_data.rt_font)?;
         self.fonts.push(font_data);
         Ok(font)
     }
 
-    /// Loads the font family at the given path with the given name.
-    ///
-    /// This method assumes that at the given path, these files exist and are valid font files:
-    /// - `{name}-Regular.ttf`
-    /// - `{name}-Bold.ttf`
-    /// - `{name}-Italic.ttf`
-    /// - `{name}-BoldItalic.ttf`
-    pub fn load_font_family(
+    /// Adds the given font family to the cache and returns a reference to it.
+    pub fn add_font_family(
         &mut self,
-        dir: impl AsRef<path::Path>,
-        name: &str,
+        family: FontFamily<FontData>,
     ) -> Result<FontFamily<Font>, Error> {
-        let dir = dir.as_ref();
         Ok(FontFamily {
-            regular: self.load_font(&dir.join(format!("{}-Regular.ttf", name)))?,
-            bold: self.load_font(&dir.join(format!("{}-Bold.ttf", name)))?,
-            italic: self.load_font(&dir.join(format!("{}-Italic.ttf", name)))?,
-            bold_italic: self.load_font(&dir.join(format!("{}-BoldItalic.ttf", name)))?,
+            regular: self.add_font(family.regular)?,
+            bold: self.add_font(family.bold)?,
+            italic: self.add_font(family.italic)?,
+            bold_italic: self.add_font(family.bold_italic)?,
         })
     }
 
@@ -186,6 +170,31 @@ impl FontData {
             raw_data: RawFontData::Embedded(data),
         })
     }
+
+    /// Loads the font at the given path.
+    ///
+    /// The path must point to a file that can be read by [`rusttype`][].
+    ///
+    /// [`rusttype`]: https://docs.rs/rusttype
+    pub fn load(path: impl AsRef<path::Path>) -> Result<FontData, Error> {
+        use std::io::Read as _;
+
+        let path = path.as_ref();
+        let mut font_file = fs::File::open(path).map_err(|err| {
+            Error::new(format!("Failed to open font file {}", path.display()), err)
+        })?;
+        let mut buf = Vec::new();
+        font_file.read_to_end(&mut buf).map_err(|err| {
+            Error::new(format!("Failed to read font file {}", path.display()), err)
+        })?;
+        let font_data = FontData::new(buf).map_err(|err| {
+            Error::new(
+                format!("Failed to load rusttype font from file {}", path.display()),
+                err,
+            )
+        })?;
+        Ok(font_data)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -197,7 +206,7 @@ enum RawFontData {
 ///
 /// See the [module documentation](index.html) for details on the internals.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct FontFamily<T: Clone + Copy + fmt::Debug + PartialEq> {
+pub struct FontFamily<T: Clone + fmt::Debug> {
     /// The regular variant of this font family.
     pub regular: T,
     /// The bold variant of this font family.
@@ -293,4 +302,21 @@ impl Font {
             .map(|c| self.char_width(font_cache, c, font_size))
             .sum()
     }
+}
+
+/// Loads the font family at the given path with the given name.
+///
+/// This method assumes that at the given path, these files exist and are valid font files:
+/// - `{name}-Regular.ttf`
+/// - `{name}-Bold.ttf`
+/// - `{name}-Italic.ttf`
+/// - `{name}-BoldItalic.ttf`
+pub fn from_files(dir: impl AsRef<path::Path>, name: &str) -> Result<FontFamily<FontData>, Error> {
+    let dir = dir.as_ref();
+    Ok(FontFamily {
+        regular: FontData::load(&dir.join(format!("{}-Regular.ttf", name)))?,
+        bold: FontData::load(&dir.join(format!("{}-Bold.ttf", name)))?,
+        italic: FontData::load(&dir.join(format!("{}-Italic.ttf", name)))?,
+        bold_italic: FontData::load(&dir.join(format!("{}-BoldItalic.ttf", name)))?,
+    })
 }

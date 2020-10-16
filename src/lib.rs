@@ -15,8 +15,11 @@
 //! render the document and to write it to a file.
 //!
 //! ```no_run
+//! // Load a font from the file system
+//! let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
+//!     .expect("Failed to load font family");
 //! // Create a document and set the default font family
-//! let mut doc = genpdf::Document::new("./fonts", "Liberation")
+//! let mut doc = genpdf::Document::new(font_family)
 //!     .expect("Failed to create PDF document");
 //! // Change the default settings
 //! doc.set_margins(10);
@@ -150,7 +153,6 @@ pub mod style;
 use std::fs;
 use std::io;
 use std::path;
-use std::str;
 
 use derive_more::{
     Add, AddAssign, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign, Sum,
@@ -431,7 +433,11 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// # Example
 ///
 /// ```no_run
-/// let mut doc = genpdf::Document::new("./fonts", "Liberation")
+/// // Load a font from the file system
+/// let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans")
+///     .expect("Failed to load font family");
+/// // Create a document and set the default font family
+/// let mut doc = genpdf::Document::new(font_family)
 ///     .expect("Failed to create document");
 /// doc.push(genpdf::elements::Paragraph::new("Document content"));
 /// doc.render_to_file("output.pdf").expect("Failed to render document");
@@ -452,20 +458,14 @@ pub struct Document {
 }
 
 impl Document {
-    /// Creates a new document with the font family with the given name in the given directory as
-    /// the default font.
-    ///
-    /// See the documentation of the [`load_font_family`][] method for details on the font loading.
-    ///
-    /// [`load_font_family`]: #method.load_font_family
+    /// Creates a new document with the given default font family.
     pub fn new(
-        font_dir: impl AsRef<path::Path>,
-        font_name: impl AsRef<str>,
+        default_font_family: fonts::FontFamily<fonts::FontData>,
     ) -> Result<Document, error::Error> {
         Ok(Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
-            font_cache: fonts::FontCache::new(font_dir, font_name.as_ref())?,
+            font_cache: fonts::FontCache::new(default_font_family)?,
             style: style::Style::new(),
             paper_size: PaperSize::A4.into(),
             margins: None,
@@ -473,26 +473,18 @@ impl Document {
         })
     }
 
-    /// Loads the font family with the given name from the given directory, adds them to the font
-    /// cache and returns a reference to the loaded font family.
-    ///
-    /// The font is loaded from TTF files in the given directory.  It assumes that the following
-    /// files exist and are valid font files:
-    /// - `{dir}/{name}-Regular.ttf`
-    /// - `{dir}/{name}-Bold.ttf`
-    /// - `{dir}/{name}-Italic.ttf`
-    /// - `{dir}/{name}-BoldItalic.ttf`
+    /// Adds the given font family to the font cache for this document and returns a reference to
+    /// it.
     ///
     /// Note that the returned font reference may only be used for this document.  It cannot be
     /// shared with other `Document` or [`FontCache`][] instances.
     ///
     /// [`FontCache`]: fonts/struct.FontCache.html
-    pub fn load_font_family(
+    pub fn add_font_family(
         &mut self,
-        dir: impl AsRef<path::Path>,
-        name: &str,
+        font_family: fonts::FontFamily<fonts::FontData>,
     ) -> Result<fonts::FontFamily<fonts::Font>, error::Error> {
-        self.font_cache.load_font_family(dir, name)
+        self.font_cache.add_font_family(font_family)
     }
 
     /// Returns the font cache used by this document.
