@@ -3,6 +3,13 @@ SPDX-FileCopyrightText: 2020 Robin Krahl <robin.krahl@ireas.org>
 SPDX-License-Identifier: CC0-1.0
 -->
 
+# Unreleased
+
+## Breaking Changes
+
+- Improve the font handling:
+  - Make `FontFamily` generic over the font data type.
+
 # v0.1.1 (2020-10-16)
 
 This patch release adds some trait implementations and utility functions and

@@ -102,7 +102,7 @@ pub enum Effect {
 /// [`FontCache`]: ../fonts/struct.FontCache.html
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Style {
-    font_family: Option<fonts::FontFamily>,
+    font_family: Option<fonts::FontFamily<fonts::Font>>,
     font_size: Option<u8>,
     line_spacing: Option<f64>,
     color: Option<Color>,
@@ -195,12 +195,12 @@ impl Style {
     }
 
     /// Sets the font family for this style.
-    pub fn set_font_family(&mut self, font_family: fonts::FontFamily) {
+    pub fn set_font_family(&mut self, font_family: fonts::FontFamily<fonts::Font>) {
         self.font_family = Some(font_family);
     }
 
     /// Sets the font family for this style and returns it.
-    pub fn with_font_family(mut self, font_family: fonts::FontFamily) -> Style {
+    pub fn with_font_family(mut self, font_family: fonts::FontFamily<fonts::Font>) -> Style {
         self.set_font_family(font_family);
         self
     }
@@ -268,7 +268,7 @@ impl Style {
     /// If the font family is set, it must have been created by the given [`FontCache`][].
     ///
     /// [`FontCache`]: ../fonts/struct.FontCache.html
-    pub fn font_family(&self, font_cache: &fonts::FontCache) -> fonts::FontFamily {
+    pub fn font_family(&self, font_cache: &fonts::FontCache) -> fonts::FontFamily<fonts::Font> {
         self.font_family
             .unwrap_or_else(|| font_cache.default_font_family())
     }
@@ -309,8 +309,8 @@ impl From<Effect> for Style {
     }
 }
 
-impl From<fonts::FontFamily> for Style {
-    fn from(font_family: fonts::FontFamily) -> Style {
+impl From<fonts::FontFamily<fonts::Font>> for Style {
+    fn from(font_family: fonts::FontFamily<fonts::Font>) -> Style {
         Style::new().with_font_family(font_family)
     }
 }

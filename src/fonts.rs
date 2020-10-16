@@ -35,6 +35,7 @@
 //! [`rusttype::Font`]: https://docs.rs/rusttype/0.8.3/rusttype/struct.Font.html
 //! [`printpdf::IndirectFontRef`]: https://docs.rs/printpdf/0.3.2/printpdf/types/plugins/graphics/two_dimensional/font/struct.IndirectFontRef.html
 
+use std::fmt;
 use std::fs;
 use std::path;
 
@@ -58,7 +59,7 @@ pub struct FontCache {
     // We have to use an option because we first have to construct the FontCache before we can load
     // a font, but the default font is always loaded in new, so this options is always some
     // (outside of new).
-    default_font_family: Option<FontFamily>,
+    default_font_family: Option<FontFamily<Font>>,
 }
 
 impl FontCache {
@@ -114,7 +115,7 @@ impl FontCache {
         &mut self,
         dir: impl AsRef<path::Path>,
         name: &str,
-    ) -> Result<FontFamily, Error> {
+    ) -> Result<FontFamily<Font>, Error> {
         let dir = dir.as_ref();
         Ok(FontFamily {
             regular: self.load_font(&dir.join(format!("{}-Regular.ttf", name)))?,
@@ -135,7 +136,7 @@ impl FontCache {
     }
 
     /// Returns the default font family for this font cache.
-    pub fn default_font_family(&self) -> FontFamily {
+    pub fn default_font_family(&self) -> FontFamily<Font> {
         self.default_font_family
             .expect("Invariant violated: no default font family for FontCache")
     }
@@ -166,16 +167,16 @@ impl FontCache {
 ///
 /// See the [module documentation](index.html) for details on the internals.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct FontFamily {
-    regular: Font,
-    bold: Font,
-    italic: Font,
-    bold_italic: Font,
+pub struct FontFamily<T: Clone + Copy + fmt::Debug + PartialEq> {
+    regular: T,
+    bold: T,
+    italic: T,
+    bold_italic: T,
 }
 
-impl FontFamily {
+impl<T: Clone + Copy + fmt::Debug + PartialEq> FontFamily<T> {
     /// Returns the font for the given style.
-    pub fn get(&self, style: Style) -> Font {
+    pub fn get(&self, style: Style) -> T {
         if style.is_bold() && style.is_italic() {
             self.bold_italic
         } else if style.is_bold() {

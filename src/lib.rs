@@ -491,7 +491,7 @@ impl Document {
         &mut self,
         dir: impl AsRef<path::Path>,
         name: &str,
-    ) -> Result<fonts::FontFamily, error::Error> {
+    ) -> Result<fonts::FontFamily<fonts::Font>, error::Error> {
         self.font_cache.load_font_family(dir, name)
     }
 
