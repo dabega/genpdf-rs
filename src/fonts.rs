@@ -213,17 +213,13 @@ impl FontData {
         path: impl AsRef<path::Path>,
         builtin: Option<printpdf::BuiltinFont>,
     ) -> Result<FontData, Error> {
-        use std::io::Read as _;
-
-        let path = path.as_ref();
-        let mut font_file = fs::File::open(path).map_err(|err| {
-            Error::new(format!("Failed to open font file {}", path.display()), err)
+        let data = fs::read(path.as_ref()).map_err(|err| {
+            Error::new(
+                format!("Failed to open font file {}", path.as_ref().display()),
+                err,
+            )
         })?;
-        let mut buf = Vec::new();
-        font_file.read_to_end(&mut buf).map_err(|err| {
-            Error::new(format!("Failed to read font file {}", path.display()), err)
-        })?;
-        FontData::new(buf, builtin)
+        FontData::new(data, builtin)
     }
 }
 
