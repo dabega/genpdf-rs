@@ -434,6 +434,9 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// For details on the rendering process, see the [Rendering Process section of the crate
 /// documentation](index.html#rendering-process).
 ///
+/// If the `hyphenation` feature is enabled, users can activate hyphenation with the
+/// [`set_hyphenator`][] method.
+///
 /// # Example
 ///
 /// ```no_run
@@ -449,6 +452,7 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// [`push`]: #method.push
 /// [`render`]: #method.render
 /// [`render_to_file`]: #method.render_to_file
+/// [`set_hyphenation`]: #method.set_hyphenation
 /// [`LinearLayout`]: elements/struct.LinearLayout.html
 pub struct Document {
     root: elements::LinearLayout,
@@ -467,7 +471,7 @@ impl Document {
         Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
-            context: Context { font_cache },
+            context: Context::new(font_cache),
             style: style::Style::new(),
             paper_size: PaperSize::A4.into(),
             margins: None,
@@ -497,6 +501,14 @@ impl Document {
     /// [`load_font_family`]: #method.load_font_family
     pub fn font_cache(&self) -> &fonts::FontCache {
         &self.context.font_cache
+    }
+
+    /// Activates hyphenation and sets the hyphentor to use.
+    ///
+    /// *Only available if the `hyphenation` feature is enabled.*
+    #[cfg(feature = "hyphenation")]
+    pub fn set_hyphenator(&mut self, hyphenator: hyphenation::Standard) {
+        self.context.hyphenator = Some(hyphenator);
     }
 
     /// Sets the title of the PDF document.
@@ -719,4 +731,26 @@ pub trait Element {
 pub struct Context {
     /// The font cache for this rendering process.
     pub font_cache: fonts::FontCache,
+    /// The hyphenator to use for hyphenation.
+    ///
+    /// *Only available if the `hyphenation` feature is enabled.*
+    ///
+    /// If this field is `None`, hyphenation is disabled.
+    #[cfg(feature = "hyphenation")]
+    pub hyphenator: Option<hyphenation::Standard>,
+}
+
+impl Context {
+    #[cfg(not(feature = "hyphenation"))]
+    fn new(font_cache: fonts::FontCache) -> Context {
+        Context { font_cache }
+    }
+
+    #[cfg(feature = "hyphenation")]
+    fn new(font_cache: fonts::FontCache) -> Context {
+        Context {
+            font_cache,
+            hyphenator: None,
+        }
+    }
 }

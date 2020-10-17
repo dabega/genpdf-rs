@@ -47,6 +47,16 @@ fn main() {
     doc.set_margins(10);
     doc.set_line_spacing(1.25);
 
+    #[cfg(feature = "hyphenation")]
+    {
+        use hyphenation::Load;
+
+        doc.set_hyphenator(
+            hyphenation::Standard::from_embedded(hyphenation::Language::EnglishUS)
+                .expect("Failed to load hyphenation data"),
+        );
+    }
+
     let monospace = doc.add_font_family(monospace_font);
     let code = style::Style::from(monospace).bold();
     let red = style::Color::Rgb(255, 0, 0);

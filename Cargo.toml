@@ -20,6 +20,10 @@ readme = "README.md"
 lopdf = "0.26"
 rusttype = "0.8"
 
+[dependencies.hyphenation]
+version = "0.8"
+optional = true
+
 [dependencies.printpdf]
 version = "0.3.3"
 default-features = false
@@ -28,3 +32,7 @@ default-features = false
 version = "0.99"
 default-features = false
 features = ["add", "add_assign", "from", "into", "mul", "mul_assign", "sum"]
+
+[dev-dependencies.hyphenation]
+version = "0.8"
+features = ["embed_en-us"]

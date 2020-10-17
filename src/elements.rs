@@ -323,7 +323,7 @@ impl Element for Paragraph {
 
         let height = style.line_height(&context.font_cache);
         let words = wrap::Words::new(self.text.iter().skip(self.render_idx), self.render_offset);
-        for line in wrap::Wrapper::new(words, &context.font_cache, area.size().width) {
+        for line in wrap::Wrapper::new(words, context, area.size().width) {
             let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height

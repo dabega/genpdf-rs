@@ -14,9 +14,10 @@ tasks:
   - build: |
       cd genpdf-rs
       cargo build --release
+      cargo build --release --all-features
   - test: |
       cd genpdf-rs
-      cargo test
+      cargo test --all-features
 triggers:
   - action: email
     condition: failure

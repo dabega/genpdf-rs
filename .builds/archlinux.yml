@@ -25,12 +25,13 @@ tasks:
   - build: |
       cd genpdf-rs
       cargo build --release
+      cargo build --release --all-features
   - test: |
       cd genpdf-rs
-      cargo test
+      cargo test --all-features
   - clippy: |
       cd genpdf-rs
-      cargo clippy -- -D warnings
+      cargo clippy --all-features -- -D warnings
   - format: |
       cd genpdf-rs
       cargo fmt -- --check

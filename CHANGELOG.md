@@ -34,6 +34,7 @@ SPDX-License-Identifier: CC0-1.0
 - Add the `StyledCow<'s>` struct that contains a `Cow<'s, str>` with a `Style`
   annotation.
 - Derive `Copy` for `StyledStr`.
+- Add support for hyphenation (enabled by the `hyphenation` feature).
 
 # v0.1.1 (2020-10-16)
 
