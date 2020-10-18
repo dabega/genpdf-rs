@@ -26,8 +26,8 @@
 //! identical to the built-in font.  For example, you can use the Liberation fonts instad of the
 //! proprietary Helvetica, Times and Courier fonts.
 //!
-//! Due to a limitation in [`printpdf`][], you can currently only use built-in fonts with ASCII
-//! text ([upstream issue](https://github.com/fschutt/printpdf/issues/30)).
+//! Built-in fonts can only be used with characters that are supported by the [Windows-1252][]
+//! encoding.
 //!
 //! **Note:**  The [`Font`][] and [`FontFamily<Font>`][`FontFamily`] structs are only valid for the
 //! [`FontCache`][] they have been created with.  If you dont use the low-level [`render`][] module
@@ -62,6 +62,7 @@
 //! [`rusttype::Font`]: https://docs.rs/rusttype/0.8.3/rusttype/struct.Font.html
 //! [`printpdf`]: https://docs.rs/printpdf
 //! [`printpdf::IndirectFontRef`]: https://docs.rs/printpdf/0.3.2/printpdf/types/plugins/graphics/two_dimensional/font/struct.IndirectFontRef.html
+//! [Windows-1252]: https://en.wikipedia.org/wiki/Windows-1252
 
 use std::fmt;
 use std::fs;

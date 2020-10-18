@@ -426,14 +426,11 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
     /// The font cache for this text section must contain the PDF font for the given style.
     pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
         let font = style.font(self.font_cache);
-        if font.is_builtin() && !s.as_ref().is_ascii() {
-            return Err(Error::new(
-                format!(
-                    "Tried to print a non-ASCII string with a built-in font: {}",
-                    s.as_ref()
-                ),
-                ErrorKind::UnsupportedEncoding,
-            ));
+        if font.is_builtin() {
+            // Built-in fonts always use the Windows-1252 encoding.  The conversion is done by
+            // printpdf, but we want to return an error instead of just ignoring the unsupported
+            // characters.
+            ensure_win1252_encoding(s.as_ref())?;
         }
 
         let font = self
@@ -462,5 +459,24 @@ impl<'a, 'f, 'l> Drop for TextSection<'a, 'f, 'l> {
             self.layer().set_fill_color(Color::Rgb(0, 0, 0).into());
         }
         self.layer().end_text_section();
+    }
+}
+
+/// Checks whether all characters of the given string are encodable in Windows-1252.
+fn ensure_win1252_encoding(s: &str) -> Result<(), Error> {
+    let encoded = lopdf::Document::encode_text(Some("WinAnsiEncoding"), s);
+
+    // Windows-1252 is a single-byte encoding, so one byte in encoded is one character.
+    if encoded.len() == s.chars().count() {
+        Ok(())
+    } else {
+        Err(Error::new(
+            format!(
+                "Tried to print a string with characters that are not supported by the \
+                Windows-1252 encoding with a built-in font: {}",
+                s
+            ),
+            ErrorKind::UnsupportedEncoding,
+        ))
     }
 }

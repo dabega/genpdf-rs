@@ -17,10 +17,11 @@ exclude = [".builds/*"]
 readme = "README.md"
 
 [dependencies]
+lopdf = "0.26"
 rusttype = "0.8"
 
 [dependencies.printpdf]
-version = "0.3.2"
+version = "0.3.3"
 default-features = false
 
 [dependencies.derive_more]

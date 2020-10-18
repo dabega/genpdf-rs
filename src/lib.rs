@@ -115,7 +115,7 @@
 //!   not used in the document.  This increases the file size by 100–200 KiB per font (500–1000 KiB
 //!   per font family).  Until this is fixed, you can pass the generated file through `ps2pdf` to
 //!   significantly reduce its size.  Alternatively, you can use a built-in font if you don’t need
-//!   non-ASCII characters.
+//!   any characters that are not supported by the [Windows-1252][] encoding.
 //!
 //! [`printpdf`]: https://docs.rs/printpdf
 //! [`rusttype`]: https://docs.rs/rusttype
@@ -140,6 +140,7 @@
 //! [`StyledString`]: style/struct.StyledString.html
 //! [`examples/demo.rs`]: https://git.sr.ht/~ireas/genpdf-rs/tree/master/examples/demo.rs
 //! [this PDF document]: https://git.sr.ht/~ireas/genpdf-rs/blob/master/examples/demo.pdf
+//! [Windows-1252]: https://en.wikipedia.org/wiki/Windows-1252
 
 #![warn(missing_docs, rust_2018_idioms)]
 

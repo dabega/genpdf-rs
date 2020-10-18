@@ -65,7 +65,7 @@ pub enum ErrorKind {
     InvalidFont,
     /// An element exceeds the page size and could not be printed.
     PageSizeExceeded,
-    /// A non-ASCII string was used with a built-in font.
+    /// A string with unsupported characters was used with a built-in font.
     UnsupportedEncoding,
     /// An IO error.
     IoError(io::Error),

@@ -35,9 +35,10 @@ fn main() {
     }
     let output_file = &args[0];
 
-    let default_font = fonts::from_files(FONT_DIR, DEFAULT_FONT_NAME, None)
-        .expect("Failed to load the default font family");
-    let monospace_font = fonts::from_files(FONT_DIR, MONO_FONT_NAME, None)
+    let default_font =
+        fonts::from_files(FONT_DIR, DEFAULT_FONT_NAME, Some(fonts::Builtin::Helvetica))
+            .expect("Failed to load the default font family");
+    let monospace_font = fonts::from_files(FONT_DIR, MONO_FONT_NAME, Some(fonts::Builtin::Courier))
         .expect("Failed to load the monospace font family");
 
     let mut doc = genpdf::Document::new(default_font);
