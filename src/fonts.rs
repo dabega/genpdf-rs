@@ -335,18 +335,23 @@ impl<T: Clone + Copy + fmt::Debug + PartialEq> FontFamily<T> {
 pub struct Font {
     idx: usize,
     is_builtin: bool,
-    scale: f32,
+    scale: rusttype::Scale,
     line_height: Mm,
     glyph_height: Mm,
 }
 
 impl Font {
     fn new(idx: usize, is_builtin: bool, rt_font: &rusttype::Font<'static>) -> Font {
-        assert!(rt_font.units_per_em() != 0);
-        let scale = f32::from(rt_font.units_per_em());
-        let v_metrics = rt_font.v_metrics_unscaled() * (1.0 / scale);
-        let glyph_height = v_metrics.ascent - v_metrics.descent;
-        let line_height = glyph_height + v_metrics.line_gap;
+        let units_per_em = rt_font.units_per_em();
+        assert!(units_per_em != 0);
+
+        let units_per_em = f32::from(units_per_em);
+        let v_metrics = rt_font.v_metrics_unscaled();
+        let glyph_height = (v_metrics.ascent - v_metrics.descent) / units_per_em;
+        let scale = rusttype::Scale::uniform(glyph_height);
+
+        let line_height = glyph_height + v_metrics.line_gap / units_per_em;
+
         Font {
             idx,
             is_builtin,
@@ -377,14 +382,15 @@ impl Font {
     ///
     /// [`FontCache`]: struct.FontCache.html
     pub fn char_width(&self, font_cache: &FontCache, c: char, font_size: u8) -> Mm {
-        let glyph = font_cache
+        let advance_width = font_cache
             .get_rt_font(*self)
             .glyph(c)
-            .standalone()
-            .get_data()
-            .expect("No data for standalone glyph");
-        let width = glyph.unit_h_metrics.advance_width / self.scale * f32::from(font_size);
-        Mm::from(printpdf::Pt(f64::from(width)))
+            .scaled(self.scale)
+            .h_metrics()
+            .advance_width;
+        Mm::from(printpdf::Pt(f64::from(
+            advance_width * f32::from(font_size),
+        )))
     }
 
     /// Returns the width of a string with this font and the given font size.
