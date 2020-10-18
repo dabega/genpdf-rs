@@ -4,9 +4,11 @@
 //! Types for styled strings.
 //!
 //! A [`StyledString`][] is a [`String`][] with a [`Style`][] annotation.  Accordingly, a
-//! [`StyledStr`][] is a [`&str`][] with a [`Style`][] annotation.  A [`Style`][] is a combination
-//! of a [`FontFamily`][], a font size, a line spacing factor, a [`Color`][] and a combination of
-//! [`Effect`][]s (bold or italic).
+//! [`StyledStr`][] is a [`&str`][] with a [`Style`][] annotation, and a [`StyledCow`][] is either
+//! a [`Cow<'_, str>`][] with a [`Style`][] annotation.
+//!
+//! A [`Style`][] is a combination of a [`FontFamily`][], a font size, a line spacing factor, a
+//! [`Color`][] and a combination of [`Effect`][]s (bold or italic).
 //!
 //! # Example
 //!
@@ -21,11 +23,14 @@
 //! [`Effect`]: enum.Effect.html
 //! [`FontFamily`]: ../fonts/struct.FontFamily.html
 //! [`Style`]: struct.Style.html
+//! [`StyledCow`]: struct.StyledCow.html
 //! [`StyledStr`]: struct.StyledStr.html
 //! [`StyledString`]: struct.StyledString.html
 //! [`String`]: https://doc.rust-lang.org/std/string/struct.String.html
 //! [`&str`]: https://doc.rust-lang.org/std/primitive.str.html
+//! [`Cow<'_, str>`]: https://doc.rust-lang.org/std/borrow/enum.Cow.html
 
+use std::borrow;
 use std::iter;
 
 use crate::fonts;
@@ -446,5 +451,82 @@ impl<'s> From<&'s String> for StyledStr<'s> {
 impl<'s> From<&'s StyledString> for StyledStr<'s> {
     fn from(s: &'s StyledString) -> StyledStr<'s> {
         StyledStr::new(&s.s, s.style)
+    }
+}
+
+/// A [`Cow<'s, str>`][] with a [`Style`][] annotation.
+///
+/// # Example
+///
+/// ```
+/// use genpdf::style;
+/// let ss1 = style::StyledCow::new("bold", style::Effect::Bold);
+/// let ss2 = style::StyledCow::new("red".to_owned(), style::Color::Rgb(255, 0, 0));
+/// ```
+///
+/// [`Style`]: struct.Style.html
+/// [`Cow<'s, str>`]: https://doc.rust-lang.org/std/borrow/enum.Cow.html
+#[derive(Clone, Debug, Default)]
+pub struct StyledCow<'s> {
+    /// The annotated string.
+    pub s: borrow::Cow<'s, str>,
+    /// The style annotation.
+    pub style: Style,
+}
+
+impl<'s> StyledCow<'s> {
+    /// Creates a new styled string from the given string and style.
+    pub fn new(s: impl Into<borrow::Cow<'s, str>>, style: impl Into<Style>) -> StyledCow<'s> {
+        StyledCow {
+            s: s.into(),
+            style: style.into(),
+        }
+    }
+
+    /// Calculates the width of the this string with this style using the data in the given font
+    /// cache.
+    ///
+    /// If the font family is set for the style, it must have been created by the given
+    /// [`FontCache`][].
+    ///
+    /// [`FontCache`]: ../fonts/struct.FontCache.html
+    pub fn width(&self, font_cache: &fonts::FontCache) -> Mm {
+        self.style.str_width(font_cache, self.s.as_ref())
+    }
+}
+
+impl<'s> From<&'s str> for StyledCow<'s> {
+    fn from(s: &'s str) -> StyledCow<'s> {
+        StyledCow::new(s, Style::new())
+    }
+}
+
+impl<'s> From<&'s String> for StyledCow<'s> {
+    fn from(s: &'s String) -> StyledCow<'s> {
+        StyledCow::new(s, Style::new())
+    }
+}
+
+impl<'s> From<String> for StyledCow<'s> {
+    fn from(s: String) -> StyledCow<'s> {
+        StyledCow::new(s, Style::new())
+    }
+}
+
+impl<'s> From<StyledStr<'s>> for StyledCow<'s> {
+    fn from(s: StyledStr<'s>) -> StyledCow<'s> {
+        StyledCow::new(s.s, s.style)
+    }
+}
+
+impl<'s> From<&'s StyledString> for StyledCow<'s> {
+    fn from(s: &'s StyledString) -> StyledCow<'s> {
+        StyledCow::new(&s.s, s.style)
+    }
+}
+
+impl<'s> From<StyledString> for StyledCow<'s> {
+    fn from(s: StyledString) -> StyledCow<'s> {
+        StyledCow::new(s.s, s.style)
     }
 }

@@ -29,6 +29,11 @@ SPDX-License-Identifier: CC0-1.0
 - Move the `FontCache` instance used during the rendering process to the new
   `Context` struct.
 
+## Non-Breaking Changes
+
+- Add the `StyledCow<'s>` struct that contains a `Cow<'s, str>` with a `Style`
+  annotation.
+
 # v0.1.1 (2020-10-16)
 
 This patch release adds some trait implementations and utility functions and
