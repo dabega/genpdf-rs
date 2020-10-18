@@ -44,8 +44,22 @@ fn main() {
     let mut doc = genpdf::Document::new(default_font);
     doc.set_title("genpdf Demo Document");
     doc.set_minimal_conformance();
-    doc.set_margins(10);
     doc.set_line_spacing(1.25);
+
+    let mut decorator = genpdf::SimplePageDecorator::new();
+    decorator.set_margins(10);
+    decorator.set_header(|page| {
+        let mut layout = elements::LinearLayout::vertical();
+        if page > 1 {
+            layout.push(
+                elements::Paragraph::new(format!("Page {}", page))
+                    .aligned(elements::Alignment::Center),
+            );
+            layout.push(elements::Break::new(1));
+        }
+        layout.styled(style::Style::new().with_font_size(10))
+    });
+    doc.set_page_decorator(decorator);
 
     #[cfg(feature = "hyphenation")]
     {

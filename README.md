@@ -49,6 +49,7 @@ For more information, see the [API documentation](https://docs.rs/genpdf).
 - Text wrapping at word boundaries and optional hyphenation
 - Layout of elements sequentially or in tables
 - Rudimentary support for shapes
+- Page headers and custom page decorations
 
 ## Cargo Features
 

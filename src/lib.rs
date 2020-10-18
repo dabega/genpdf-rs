@@ -22,8 +22,11 @@
 //! // Create a document and set the default font family
 //! let mut doc = genpdf::Document::new(font_family);
 //! // Change the default settings
-//! doc.set_margins(10);
 //! doc.set_title("Demo document");
+//! // Customize the pages
+//! let mut decorator = genpdf::SimplePageDecorator::new();
+//! decorator.set_margins(10);
+//! doc.set_page_decorator(decorator);
 //! // Add one or more elements
 //! doc.push(genpdf::elements::Paragraph::new("This is a demo document."));
 //! // Render the document and write it to a file
@@ -91,6 +94,9 @@
 //! Elements may print to the provided area using the methods of the [`Area`][] struct, or by
 //! calling the `render` method of other elements, or both.
 //!
+//! Every new page is prepared by calling the document’s [`PageDecorator`][] (if set).  This
+//! decorator can add a margin to the page, print a header, a footer, or perform other tasks.
+//!
 //! The render process is cancelled if an `Element` returns an error, or if no content has been
 //! rendered to a newly created page.  This indicates that an element does not fit on a clear page
 //! and can’t even be rendered partially, so the rendering process is cancelled.
@@ -130,7 +136,8 @@
 //! [`Element`]: trait.Element.html
 //! [`Element::render`]: trait.Element.html#tymethod.render
 //! [`Element::styled`]: trait.Element.html#tymethod.styled
-//! [`RenderResult`]: trait.RenderResult.html
+//! [`PageDecorator`]: trait.PageDecorator.html
+//! [`RenderResult`]: struct.RenderResult.html
 //! [`LinearLayout`]: elements/struct.LinearLayout.html
 //! [`StyledElement`]: elements/StyledElement.html
 //! [`FontCache`]: fonts/struct.FontCache.html
@@ -434,6 +441,11 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// For details on the rendering process, see the [Rendering Process section of the crate
 /// documentation](index.html#rendering-process).
 ///
+/// You can add a [`PageDecorator`][] to this document by calling [`set_page_decorator`][].  This
+/// page decorator will be called for every new page and can add a margin, a header or other
+/// elements to the page before it is filled with the actual document content.  See the
+/// [`SimplePageDecorator`][] for a basic implementation.
+///
 /// If the `hyphenation` feature is enabled, users can activate hyphenation with the
 /// [`set_hyphenator`][] method.
 ///
@@ -453,6 +465,9 @@ impl<T: Into<Mm>> From<T> for Margins {
 /// [`render`]: #method.render
 /// [`render_to_file`]: #method.render_to_file
 /// [`set_hyphenation`]: #method.set_hyphenation
+/// [`set_page_decorator`]: #method.set_page_decorator
+/// [`PageDecorator`]: trait.PageDecorator.html
+/// [`SimplePageDecorator`]: struct.SimplePageDecorator.html
 /// [`LinearLayout`]: elements/struct.LinearLayout.html
 pub struct Document {
     root: elements::LinearLayout,
@@ -460,7 +475,7 @@ pub struct Document {
     context: Context,
     style: style::Style,
     paper_size: Size,
-    margins: Option<Margins>,
+    decorator: Option<Box<dyn PageDecorator>>,
     conformance: Option<printpdf::PdfConformance>,
 }
 
@@ -474,7 +489,7 @@ impl Document {
             context: Context::new(font_cache),
             style: style::Style::new(),
             paper_size: PaperSize::A4.into(),
-            margins: None,
+            decorator: None,
             conformance: None,
         }
     }
@@ -541,11 +556,16 @@ impl Document {
         self.paper_size = paper_size.into();
     }
 
-    /// Sets the margins for all pages of this document.
+    /// Sets the page decorator for this document.
     ///
-    /// If this method is not called, the full page is used.
-    pub fn set_margins(&mut self, margins: impl Into<Margins>) {
-        self.margins = Some(margins.into());
+    /// The page decorator is called for every page before it is filled with the document content.
+    /// It can add margins, headers or other elements.
+    ///
+    /// See the [`SimplePageDecorator`][] for an example implementation.
+    ///
+    /// [`SimplePageDecorator`]: struct.SimplePageDecorator.html
+    pub fn set_page_decorator<D: PageDecorator + 'static>(&mut self, decorator: D) {
+        self.decorator = Some(Box::new(decorator));
     }
 
     /// Sets the PDF conformance settings for this document.
@@ -592,8 +612,8 @@ impl Document {
         self.context.font_cache.load_pdf_fonts(&renderer)?;
         loop {
             let mut area = renderer.last_page().last_layer().area();
-            if let Some(margins) = self.margins {
-                area.add_margins(margins);
+            if let Some(decorator) = &mut self.decorator {
+                area = decorator.decorate_page(&self.context, area, self.style)?;
             }
             let result = self.root.render(&self.context, area, self.style)?;
             if result.has_more {
@@ -644,6 +664,96 @@ pub struct RenderResult {
     pub size: Size,
     /// Indicates whether the element contains more content that did not fit in the provided area.
     pub has_more: bool,
+}
+
+/// Prepares a page of a document.
+///
+/// If you set an implementation of this trait for a [`Document`][] using the
+/// [`set_page_decorator`][] method, its [`decorate_page`][] method is called every time a new page
+/// is added to the document.  The decorator can prepare the page before it is filled with the
+/// actual content.  See [`SimplePageDecorator`][] for a basic implementation.
+///
+/// [`Document`]: struct.Document.html
+/// [`set_page_decorator`]: struct.Document.html#method.set_page_decorator
+/// [`SimplePageDecorator`]: struct.SimplePageDecorator.html
+/// [`decorate_page`]: #tymethod.decorate_page
+pub trait PageDecorator {
+    /// Prepares the page with the given area before it is filled with the document content and
+    /// returns the writable area of the page.
+    ///
+    /// The returned area will be passed to the document content.
+    fn decorate_page<'a>(
+        &mut self,
+        context: &Context,
+        area: render::Area<'a>,
+        style: style::Style,
+    ) -> Result<render::Area<'a>, error::Error>;
+}
+
+type HeaderCallback = Box<dyn Fn(usize) -> Box<dyn Element>>;
+
+/// Prepares a page of a document with margins and a header.
+///
+/// Per default, this decorator does not modify the page.  If margins have been set with the
+/// [`set_margins`][] method, they are applied to every page.  If a header callback is configured
+/// with the [`set_header`][] method, it will be called for every page and its return value will be
+/// rendered at the beginning of the page (after the margins have been applied).
+///
+/// [`set_margins`]: #method.set_margins
+/// [`set_header`]: #method.set_header
+#[derive(Default)]
+pub struct SimplePageDecorator {
+    page: usize,
+    margins: Option<Margins>,
+    header_cb: Option<HeaderCallback>,
+}
+
+impl SimplePageDecorator {
+    /// Creates a new page decorator that does not modify the page.
+    pub fn new() -> SimplePageDecorator {
+        SimplePageDecorator::default()
+    }
+
+    /// Sets the margins for all pages of this document.
+    ///
+    /// If this method is not called, the full page is used.
+    pub fn set_margins(&mut self, margins: impl Into<Margins>) {
+        self.margins = Some(margins.into());
+    }
+
+    /// Sets the header generator for this document.
+    ///
+    /// The given closure will be called once per page.  Its argument is the page number (starting
+    /// with 1), and its return value will be rendered at the top of the page.  The document
+    /// content will start directly after the element.
+    pub fn set_header<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> E + 'static,
+        E: Element + 'static,
+    {
+        // We manually box the return type of the callback so that it is easier to write closures.
+        self.header_cb = Some(Box::new(move |page| Box::new(cb(page))));
+    }
+}
+
+impl PageDecorator for SimplePageDecorator {
+    fn decorate_page<'a>(
+        &mut self,
+        context: &Context,
+        mut area: render::Area<'a>,
+        style: style::Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        self.page += 1;
+        if let Some(margins) = self.margins {
+            area.add_margins(margins);
+        }
+        if let Some(cb) = &self.header_cb {
+            let mut element = cb(self.page);
+            let result = element.render(context, area.clone(), style)?;
+            area.add_offset(Position::new(0, result.size.height));
+        }
+        Ok(area)
+    }
 }
 
 /// An element of a PDF document.

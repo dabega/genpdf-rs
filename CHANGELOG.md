@@ -28,6 +28,7 @@ SPDX-License-Identifier: CC0-1.0
       `TextSection::print_str` methods to return a `Result`.
 - Move the `FontCache` instance used during the rendering process to the new
   `Context` struct.
+- Remove the `Document::set_margins` method (use a `PageDecorator` instead).
 
 ## Non-Breaking Changes
 
@@ -37,6 +38,9 @@ SPDX-License-Identifier: CC0-1.0
 - Add support for hyphenation (enabled by the `hyphenation` feature).
 - Add the `PageBreak` element.
 - Implement `From<Vec<StyledString>>` for `Paragraph`.
+- Add the `PageDecorator` trait, the `SimplePageDecorator` implementation and
+  the `Document::set_page_decorator` method to allow customization of all
+  document pages.
 
 # v0.1.1 (2020-10-16)
 
