@@ -35,6 +35,7 @@ SPDX-License-Identifier: CC0-1.0
   annotation.
 - Derive `Copy` for `StyledStr`.
 - Add support for hyphenation (enabled by the `hyphenation` feature).
+- Add the `PageBreak` element.
 
 # v0.1.1 (2020-10-16)
 

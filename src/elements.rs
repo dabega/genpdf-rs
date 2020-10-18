@@ -21,6 +21,7 @@
 //!   - [`StyledElement`][]: sets a default style for the wrapped element and its children
 //! - Other:
 //!   - [`Break`][]: adds forced line breaks as a spacer
+//!   - [`PageBreak`][]: adds a forced page break
 //!
 //! You can create custom elements by implementing the [`Element`][] trait.
 //!
@@ -31,6 +32,7 @@
 //! [`UnorderedList`]: struct.UnorderedList.html
 //! [`Text`]: struct.Text.html
 //! [`Break`]: struct.Break.html
+//! [`PageBreak`]: struct.PageBreak.html
 //! [`Paragraph`]: struct.Paragraph.html
 //! [`FramedElement`]: struct.FramedElement.html
 //! [`PaddedElement`]: struct.PaddedElement.html
@@ -411,6 +413,49 @@ impl Element for Break {
             self.lines -= result.size.height.0 / line_height.0;
         }
         Ok(result)
+    }
+}
+
+/// A page break.
+///
+/// This element inserts a page break.
+///
+/// # Example
+///
+/// ```
+/// let pb = genpdf::elements::PageBreak::new();
+/// ```
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PageBreak {
+    cont: bool,
+}
+
+impl PageBreak {
+    /// Creates a new page break.
+    pub fn new() -> PageBreak {
+        PageBreak::default()
+    }
+}
+
+impl Element for PageBreak {
+    fn render(
+        &mut self,
+        _context: &Context,
+        _area: render::Area<'_>,
+        _style: Style,
+    ) -> Result<RenderResult, Error> {
+        if self.cont {
+            Ok(RenderResult::default())
+        } else {
+            // We don’t use (0,0) as the size as this might abort the render process if this is the
+            // first element on a new page, see the Rendering Process section of the crate
+            // documentation.
+            self.cont = true;
+            Ok(RenderResult {
+                size: Size::new(1, 0),
+                has_more: true,
+            })
+        }
     }
 }
 
