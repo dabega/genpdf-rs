@@ -36,6 +36,7 @@ SPDX-License-Identifier: CC0-1.0
 - Derive `Copy` for `StyledStr`.
 - Add support for hyphenation (enabled by the `hyphenation` feature).
 - Add the `PageBreak` element.
+- Implement `From<Vec<StyledString>>` for `Paragraph`.
 
 # v0.1.1 (2020-10-16)
 

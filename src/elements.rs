@@ -352,6 +352,15 @@ impl Element for Paragraph {
     }
 }
 
+impl From<Vec<StyledString>> for Paragraph {
+    fn from(text: Vec<StyledString>) -> Paragraph {
+        Paragraph {
+            text,
+            ..Default::default()
+        }
+    }
+}
+
 impl<T: Into<StyledString>> iter::Extend<T> for Paragraph {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for s in iter {
