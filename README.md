@@ -46,7 +46,7 @@ For more information, see the [API documentation](https://docs.rs/genpdf).
 - PDF generation in pure Rust
 - Text rendering with support for setting the font family, style and size as
   well as the text color and text effects (bold or italic)
-- Text wrapping at word boundaries
+- Text wrapping at word boundaries and optional hyphenation
 - Layout of elements sequentially or in tables
 - Rudimentary support for shapes
 
@@ -63,8 +63,6 @@ These features are currently not supported but planned for future versions:
 - Improved support for drawing shapes
 - Images
 - Advanced text formatting
-- Hyphenation
-- Easier font lookup
 
 See also the [`genpdf-rs` issue tracker](https://todo.sr.ht/~ireas/genpdf-rs).
 
