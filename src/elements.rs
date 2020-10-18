@@ -38,7 +38,9 @@
 //! [`PaddedElement`]: struct.PaddedElement.html
 //! [`StyledElement`]: struct.StyledElement.html
 
+use std::collections;
 use std::iter;
+use std::mem;
 
 use crate::error::{Error, ErrorKind};
 use crate::render;
@@ -243,8 +245,7 @@ impl Default for Alignment {
 #[derive(Clone, Debug, Default)]
 pub struct Paragraph {
     text: Vec<StyledString>,
-    render_offset: usize,
-    render_idx: usize,
+    words: collections::VecDeque<StyledString>,
     style_applied: bool,
     alignment: Alignment,
 }
@@ -317,35 +318,47 @@ impl Element for Paragraph {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
-        if self.render_idx >= self.text.len() {
-            return Ok(result);
-        }
 
         self.apply_style(style);
 
+        if self.words.is_empty() {
+            if self.text.is_empty() {
+                return Ok(result);
+            }
+            self.words = wrap::Words::new(mem::take(&mut self.text)).collect();
+        }
+
         let height = style.line_height(&context.font_cache);
-        let words = wrap::Words::new(self.text.iter().skip(self.render_idx), self.render_offset);
-        for line in wrap::Wrapper::new(words, context, area.size().width) {
+        let words = self.words.iter().map(Into::into);
+        let mut rendered_len = 0;
+        for (line, delta) in wrap::Wrapper::new(words, context, area.size().width) {
             let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height
             if let Ok(mut section) = area.text_section(&context.font_cache, position, style) {
                 for s in line {
                     section.print_str(&s.s, s.style)?;
-                    self.render_offset += s.s.len();
-                    while self.render_idx < self.text.len()
-                        && self.render_offset >= self.text[self.render_idx].s.len()
-                    {
-                        self.render_offset -= self.text[self.render_idx].s.len();
-                        self.render_idx += 1;
-                    }
+                    rendered_len += s.s.len();
                 }
+                rendered_len -= delta;
             } else {
                 result.has_more = true;
                 break;
             }
             result.size = result.size.stack_vertical(Size::new(width, height));
             area.add_offset(Position::new(0, height));
+        }
+
+        // Remove the rendered data from self.words so that we don’t render it again on the next
+        // call to render.
+        while rendered_len > 0 && !self.words.is_empty() {
+            if self.words[0].s.len() <= rendered_len {
+                rendered_len -= self.words[0].s.len();
+                self.words.pop_front();
+            } else {
+                self.words[0].s.replace_range(..rendered_len, "");
+                rendered_len = 0;
+            }
         }
 
         Ok(result)

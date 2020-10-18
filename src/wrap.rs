@@ -3,6 +3,8 @@
 
 //! Utilities for text wrapping.
 
+use std::mem;
+
 use crate::style;
 use crate::Context;
 use crate::Mm;
@@ -32,9 +34,11 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Wrapper<'c, 's, I> {
 }
 
 impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 's, I> {
-    type Item = Vec<style::StyledCow<'s>>;
+    // This iterator yields pairs of lines and the length difference between the input words and
+    // the line.
+    type Item = (Vec<style::StyledCow<'s>>, usize);
 
-    fn next(&mut self) -> Option<Vec<style::StyledCow<'s>>> {
+    fn next(&mut self) -> Option<(Vec<style::StyledCow<'s>>, usize)> {
         // Append words to self.buf until the maximum line length is reached
         while let Some(s) = self.iter.next() {
             let mut width = s.width(&self.context.font_cache);
@@ -42,10 +46,14 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
             if self.x + width > self.width {
                 // The word does not fit into the current line (at least not completely)
 
+                let mut delta = 0;
                 // Try to split the word so that the first part fits into the current line
                 let s = if let Some((start, end)) = split(self.context, s, self.width - self.x) {
+                    // Calculate the number of bytes that we added to the string when splitting it
+                    // (for the hyphen, if required).
+                    delta = start.s.len() + end.s.len() - s.s.len();
                     self.buf.push(start);
-                    width = s.width(&self.context.font_cache);
+                    width = end.width(&self.context.font_cache);
                     end
                 } else {
                     s.into()
@@ -62,7 +70,7 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
                 let v = std::mem::take(&mut self.buf);
                 self.buf.push(s);
                 self.x = width;
-                return Some(v);
+                return Some((v, delta));
             } else {
                 // The word fits in the current line, so just append it
                 self.buf.push(s.into());
@@ -73,7 +81,7 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
         if self.buf.is_empty() {
             None
         } else {
-            Some(std::mem::take(&mut self.buf))
+            Some((mem::take(&mut self.buf), 0))
         }
     }
 }
@@ -133,48 +141,37 @@ fn split<'s>(
 }
 
 /// Splits a sequence of styled strings into words.
-pub struct Words<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> {
+pub struct Words<I: Iterator<Item = style::StyledString>> {
     iter: I,
-    offset: usize,
-    s: Option<style::StyledStr<'s>>,
+    s: Option<style::StyledString>,
 }
 
-impl<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> Words<'s, S, I> {
+impl<I: Iterator<Item = style::StyledString>> Words<I> {
     /// Creates a new words iterator.
-    ///
-    /// If `offset` is larger than zero, it determines the number of bytes to skip in the first
-    /// string returned by the given iterator.
-    pub fn new<IntoIter: IntoIterator<Item = S, IntoIter = I>>(
+    pub fn new<IntoIter: IntoIterator<Item = style::StyledString, IntoIter = I>>(
         iter: IntoIter,
-        offset: usize,
-    ) -> Words<'s, S, I> {
+    ) -> Words<I> {
         Words {
             iter: iter.into_iter(),
-            offset,
             s: None,
         }
     }
 }
 
-impl<'s, S: Into<style::StyledStr<'s>>, I: Iterator<Item = S>> Iterator for Words<'s, S, I> {
-    type Item = style::StyledStr<'s>;
+impl<I: Iterator<Item = style::StyledString>> Iterator for Words<I> {
+    type Item = style::StyledString;
 
-    fn next(&mut self) -> Option<style::StyledStr<'s>> {
+    fn next(&mut self) -> Option<style::StyledString> {
         if self.s.as_ref().map(|s| s.s.is_empty()).unwrap_or(true) {
-            self.s = self.iter.next().map(Into::into);
+            self.s = self.iter.next();
         }
 
         if let Some(s) = &mut self.s {
-            if self.offset > 0 {
-                s.s = &s.s[self.offset..];
-                self.offset = 0;
-            }
-
             // Split at the first space or use the complete string
             let n = s.s.find(' ').map(|i| i + 1).unwrap_or_else(|| s.s.len());
-            let (word, rest) = s.s.split_at(n);
-            s.s = rest;
-            Some(style::StyledStr::new(word, s.style))
+            let mut tmp = s.s.split_off(n);
+            mem::swap(&mut tmp, &mut s.s);
+            Some(style::StyledString::new(tmp, s.style))
         } else {
             None
         }
