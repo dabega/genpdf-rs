@@ -407,7 +407,7 @@ impl<'a> From<&'a str> for StyledString {
 ///
 /// [`Style`]: struct.Style.html
 /// [`&str`]: https://doc.rust-lang.org/std/primitive.str.html
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct StyledStr<'s> {
     /// The annotated string.
     pub s: &'s str,
