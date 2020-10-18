@@ -44,6 +44,10 @@ SPDX-License-Identifier: CC0-1.0
 - Add support for kerning and add the `Font::kerning` and `Font::glyph_ids`
   methods.
 
+## Bug Fixes
+
+- Always use the configured paper size when adding new pages to a `Document`.
+
 # v0.1.1 (2020-10-16)
 
 This patch release adds some trait implementations and utility functions and

@@ -623,7 +623,7 @@ impl Document {
                         error::ErrorKind::PageSizeExceeded,
                     ));
                 }
-                renderer.add_page(PaperSize::A4);
+                renderer.add_page(self.paper_size);
             } else {
                 break;
             }
