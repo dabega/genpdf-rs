@@ -39,11 +39,10 @@
 use std::iter;
 
 use crate::error::{Error, ErrorKind};
-use crate::fonts;
 use crate::render;
 use crate::style::{Style, StyledString};
 use crate::wrap;
-use crate::{Element, Margins, Mm, Position, RenderResult, Size};
+use crate::{Context, Element, Margins, Mm, Position, RenderResult, Size};
 
 /// Arranges a list of elements sequentially.
 ///
@@ -98,14 +97,14 @@ impl LinearLayout {
 
     fn render_vertical(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
         while area.size().height > Mm(0.0) && self.render_idx < self.elements.len() {
             let element_result =
-                self.elements[self.render_idx].render(font_cache, area.clone(), style)?;
+                self.elements[self.render_idx].render(context, area.clone(), style)?;
             area.add_offset(Position::new(0, element_result.size.height));
             result.size = result.size.stack_vertical(element_result.size);
             if element_result.has_more {
@@ -122,12 +121,12 @@ impl LinearLayout {
 impl Element for LinearLayout {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
         // TODO: add horizontal layout
-        self.render_vertical(font_cache, area, style)
+        self.render_vertical(context, area, style)
     }
 }
 
@@ -153,16 +152,21 @@ impl Text {
 impl Element for Text {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         mut style: Style,
     ) -> Result<RenderResult, Error> {
         let mut result = RenderResult::default();
         style.merge(self.text.style);
-        if area.print_str(font_cache, Position::default(), style, &self.text.s)? {
+        if area.print_str(
+            &context.font_cache,
+            Position::default(),
+            style,
+            &self.text.s,
+        )? {
             result.size = Size::new(
-                style.str_width(font_cache, &self.text.s),
-                style.line_height(font_cache),
+                style.str_width(&context.font_cache, &self.text.s),
+                style.line_height(&context.font_cache),
             );
         } else {
             result.has_more = true;
@@ -306,7 +310,7 @@ impl Paragraph {
 impl Element for Paragraph {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
@@ -317,13 +321,13 @@ impl Element for Paragraph {
 
         self.apply_style(style);
 
-        let height = style.line_height(font_cache);
+        let height = style.line_height(&context.font_cache);
         let words = wrap::Words::new(self.text.iter().skip(self.render_idx), self.render_offset);
-        for line in wrap::Wrapper::new(words, font_cache, area.size().width) {
-            let width = line.iter().map(|s| s.width(font_cache)).sum();
+        for line in wrap::Wrapper::new(words, &context.font_cache, area.size().width) {
+            let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height
-            if let Ok(mut section) = area.text_section(font_cache, position, style) {
+            if let Ok(mut section) = area.text_section(&context.font_cache, position, style) {
                 for s in line {
                     section.print_str(&s.s, s.style)?;
                     self.render_offset += s.s.len();
@@ -389,7 +393,7 @@ impl Break {
 impl Element for Break {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
@@ -397,7 +401,7 @@ impl Element for Break {
         if self.lines <= 0.0 {
             return Ok(result);
         }
-        let line_height = style.line_height(font_cache);
+        let line_height = style.line_height(&context.font_cache);
         let break_height = line_height * self.lines;
         if break_height < area.size().height {
             result.size.height = break_height;
@@ -450,7 +454,7 @@ impl<E: Element> PaddedElement<E> {
 impl<E: Element> Element for PaddedElement<E> {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
@@ -458,7 +462,7 @@ impl<E: Element> Element for PaddedElement<E> {
             bottom: Mm(0.0),
             ..self.padding
         });
-        let mut result = self.element.render(font_cache, area, style)?;
+        let mut result = self.element.render(context, area, style)?;
         result.size.width += self.padding.left + self.padding.right;
         result.size.height += self.padding.top + self.padding.bottom;
         Ok(result)
@@ -505,12 +509,12 @@ impl<E: Element> StyledElement<E> {
 impl<E: Element> Element for StyledElement<E> {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         mut style: Style,
     ) -> Result<RenderResult, Error> {
         style.merge(self.style);
-        self.element.render(font_cache, area, style)
+        self.element.render(context, area, style)
     }
 }
 
@@ -552,11 +556,11 @@ impl<E: Element> FramedElement<E> {
 impl<E: Element> Element for FramedElement<E> {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        let result = self.element.render(font_cache, area.clone(), style)?;
+        let result = self.element.render(context, area.clone(), style)?;
         area.draw_line(
             vec![Position::default(), Position::new(0, result.size.height)],
             style,
@@ -659,11 +663,11 @@ impl UnorderedList {
 impl Element for UnorderedList {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        self.layout.render(font_cache, area, style)
+        self.layout.render(context, area, style)
     }
 }
 
@@ -740,11 +744,11 @@ impl OrderedList {
 impl Element for OrderedList {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
-        self.layout.render(font_cache, area, style)
+        self.layout.render(context, area, style)
     }
 }
 
@@ -807,18 +811,18 @@ impl<E: Element> BulletPoint<E> {
 impl<E: Element> Element for BulletPoint<E> {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
         let mut element_area = area.clone();
         element_area.add_offset(Position::new(self.indent, 0));
-        let mut result = self.element.render(font_cache, element_area, style)?;
+        let mut result = self.element.render(context, element_area, style)?;
         result.size.width += self.indent;
         if !self.bullet_rendered {
-            let bullet_width = style.str_width(font_cache, &self.bullet);
+            let bullet_width = style.str_width(&context.font_cache, &self.bullet);
             area.print_str(
-                font_cache,
+                &context.font_cache,
                 Position::new(self.indent - bullet_width - self.bullet_space, 0),
                 style,
                 self.bullet.as_str(),
@@ -1137,7 +1141,7 @@ impl TableLayout {
 
     fn render_row(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
@@ -1146,7 +1150,7 @@ impl TableLayout {
         let areas = area.split_horizontally(&self.column_weights);
         let mut row_height = Mm::from(0);
         for (area, element) in areas.iter().zip(self.rows[self.render_idx].iter_mut()) {
-            let element_result = element.render(font_cache, area.clone(), style)?;
+            let element_result = element.render(context, area.clone(), style)?;
             result.has_more |= element_result.has_more;
             row_height = row_height.max(element_result.size.height);
         }
@@ -1166,7 +1170,7 @@ impl TableLayout {
 impl Element for TableLayout {
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         mut area: render::Area<'_>,
         style: Style,
     ) -> Result<RenderResult, Error> {
@@ -1179,7 +1183,7 @@ impl Element for TableLayout {
         }
         result.size.width = area.size().width;
         while self.render_idx < self.rows.len() {
-            let row_result = self.render_row(font_cache, area.clone(), style)?;
+            let row_result = self.render_row(context, area.clone(), style)?;
             result.size.height += row_result.size.height;
             area.add_offset(Position::new(0, row_result.size.height));
             if row_result.has_more {

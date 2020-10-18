@@ -72,7 +72,8 @@
 //! in the layout, and so on.
 //!
 //! The [`Element::render`][] method receives the following arguments:
-//! - *font_cache* is the [`FontCache`][] instance that keeps track of the loaded fonts and can be
+//! - *context* is the context for the rendering process, see [`Context`][].  Currently, it only
+//!   stores the [`FontCache`][] instance that keeps track of the loaded fonts and can be
 //!   used to map a [`Style`][] instance to font data.
 //! - *area* is a view on the area of the current page that can be used by the element.
 //! - *style* is the [`Style`][] instance for this element.  Is is a combination of the default
@@ -121,6 +122,7 @@
 //! [`rusttype`]: https://docs.rs/rusttype
 //! [`render`]: ./render/
 //! [`elements`]: ./elements/
+//! [`Context`]: struct.Context.html
 //! [`Document`]: struct.Document.html
 //! [`Document::render`]: struct.Document.html#method.render
 //! [`Document::render_to_file`]: struct.Document.html#method.render_to_file
@@ -451,7 +453,7 @@ impl<T: Into<Mm>> From<T> for Margins {
 pub struct Document {
     root: elements::LinearLayout,
     title: String,
-    font_cache: fonts::FontCache,
+    context: Context,
     style: style::Style,
     paper_size: Size,
     margins: Option<Margins>,
@@ -461,10 +463,11 @@ pub struct Document {
 impl Document {
     /// Creates a new document with the given default font family.
     pub fn new(default_font_family: fonts::FontFamily<fonts::FontData>) -> Document {
+        let font_cache = fonts::FontCache::new(default_font_family);
         Document {
             root: elements::LinearLayout::vertical(),
             title: String::new(),
-            font_cache: fonts::FontCache::new(default_font_family),
+            context: Context { font_cache },
             style: style::Style::new(),
             paper_size: PaperSize::A4.into(),
             margins: None,
@@ -483,7 +486,7 @@ impl Document {
         &mut self,
         font_family: fonts::FontFamily<fonts::FontData>,
     ) -> fonts::FontFamily<fonts::Font> {
-        self.font_cache.add_font_family(font_family)
+        self.context.font_cache.add_font_family(font_family)
     }
 
     /// Returns the font cache used by this document.
@@ -493,7 +496,7 @@ impl Document {
     ///
     /// [`load_font_family`]: #method.load_font_family
     pub fn font_cache(&self) -> &fonts::FontCache {
-        &self.font_cache
+        &self.context.font_cache
     }
 
     /// Sets the title of the PDF document.
@@ -574,13 +577,13 @@ impl Document {
         if let Some(conformance) = self.conformance {
             renderer = renderer.with_conformance(conformance);
         }
-        self.font_cache.load_pdf_fonts(&renderer)?;
+        self.context.font_cache.load_pdf_fonts(&renderer)?;
         loop {
             let mut area = renderer.last_page().last_layer().area();
             if let Some(margins) = self.margins {
                 area.add_margins(margins);
             }
-            let result = self.root.render(&self.font_cache, area, self.style)?;
+            let result = self.root.render(&self.context, area, self.style)?;
             if result.has_more {
                 if result.size == Size::new(0, 0) {
                     return Err(error::Error::new(
@@ -678,7 +681,7 @@ pub trait Element {
     /// [`RenderResult`]: struct.RenderResult.html
     fn render(
         &mut self,
-        font_cache: &fonts::FontCache,
+        context: &Context,
         area: render::Area<'_>,
         style: style::Style,
     ) -> Result<RenderResult, error::Error>;
@@ -706,4 +709,14 @@ pub trait Element {
     {
         elements::StyledElement::new(self, style.into())
     }
+}
+
+/// The context for a rendering process.
+///
+/// This struct stores data that is shared between all elements during the rendering process.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct Context {
+    /// The font cache for this rendering process.
+    pub font_cache: fonts::FontCache,
 }

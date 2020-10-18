@@ -26,6 +26,8 @@ SPDX-License-Identifier: CC0-1.0
     - Added the `Error::UnsupportedEncoding` variant.
     - Change the return type of the `Area::print_str` and
       `TextSection::print_str` methods to return a `Result`.
+- Move the `FontCache` instance used during the rendering process to the new
+  `Context` struct.
 
 # v0.1.1 (2020-10-16)
 
