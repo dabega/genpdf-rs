@@ -36,3 +36,6 @@ features = ["add", "add_assign", "from", "into", "mul", "mul_assign", "sum"]
 [dev-dependencies.hyphenation]
 version = "0.8"
 features = ["embed_en-us"]
+
+[package.metadata.docs.rs]
+all-features = true
