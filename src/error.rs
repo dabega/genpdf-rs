@@ -47,7 +47,8 @@ impl error::Error for Error {
             ErrorKind::PageSizeExceeded => None,
             ErrorKind::UnsupportedEncoding => None,
             ErrorKind::IoError(err) => Some(err),
-            ErrorKind::PrintpdfError(err) => Some(err),
+            ErrorKind::PdfError(err) => Some(err),
+            ErrorKind::PdfIndexError(err) => Some(err),
             ErrorKind::RusttypeError(err) => Some(err),
         }
     }
@@ -69,8 +70,10 @@ pub enum ErrorKind {
     UnsupportedEncoding,
     /// An IO error.
     IoError(io::Error),
-    /// An error caused by `printpdf`.
-    PrintpdfError(printpdf::Error),
+    /// An error caused by invalid data in `printpdf`.
+    PdfError(printpdf::PdfError),
+    /// An error caused by an invalid index in `printpdf`.
+    PdfIndexError(printpdf::IndexError),
     /// An error caused by `rusttype`.
     RusttypeError(rusttype::Error),
 }
@@ -83,7 +86,24 @@ impl From<io::Error> for ErrorKind {
 
 impl From<printpdf::Error> for ErrorKind {
     fn from(error: printpdf::Error) -> ErrorKind {
-        ErrorKind::PrintpdfError(error)
+        match error {
+            printpdf::Error::Io(err) => err.into(),
+            printpdf::Error::Rusttype(err) => err.into(),
+            printpdf::Error::Pdf(err) => err.into(),
+            printpdf::Error::Index(err) => err.into(),
+        }
+    }
+}
+
+impl From<printpdf::IndexError> for ErrorKind {
+    fn from(error: printpdf::IndexError) -> ErrorKind {
+        ErrorKind::PdfIndexError(error)
+    }
+}
+
+impl From<printpdf::PdfError> for ErrorKind {
+    fn from(error: printpdf::PdfError) -> ErrorKind {
+        ErrorKind::PdfError(error)
     }
 }
 

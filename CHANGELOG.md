@@ -29,6 +29,8 @@ SPDX-License-Identifier: CC0-1.0
 - Move the `FontCache` instance used during the rendering process to the new
   `Context` struct.
 - Remove the `Document::set_margins` method (use a `PageDecorator` instead).
+- Replace the `PdfprintError` variant of `ErrorKind` with `PdfError` and
+  `PdfIndexError`.
 
 ## Non-Breaking Changes
 
