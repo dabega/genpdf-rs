@@ -68,7 +68,7 @@ use std::fmt;
 use std::fs;
 use std::path;
 
-use crate::error::{Error, ErrorKind};
+use crate::error::{Context as _, Error, ErrorKind};
 use crate::render;
 use crate::style::Style;
 use crate::Mm;
@@ -190,8 +190,7 @@ impl FontData {
         } else {
             RawFontData::Embedded(data.clone())
         };
-        let rt_font = rusttype::Font::from_bytes(data)
-            .map_err(|err| Error::new("Failed to read rusttype font", err))?;
+        let rt_font = rusttype::Font::from_bytes(data).context("Failed to read rusttype font")?;
         if rt_font.units_per_em() == 0 {
             Err(Error::new(
                 "The font is not scalable",
@@ -214,12 +213,8 @@ impl FontData {
         path: impl AsRef<path::Path>,
         builtin: Option<printpdf::BuiltinFont>,
     ) -> Result<FontData, Error> {
-        let data = fs::read(path.as_ref()).map_err(|err| {
-            Error::new(
-                format!("Failed to open font file {}", path.as_ref().display()),
-                err,
-            )
-        })?;
+        let data = fs::read(path.as_ref())
+            .with_context(|| format!("Failed to open font file {}", path.as_ref().display()))?;
         FontData::new(data, builtin)
     }
 }

@@ -7,6 +7,41 @@ use std::error;
 use std::fmt;
 use std::io;
 
+/// Helper trait for creating [`Error`][] instances.
+///
+/// This trait is inspired by [`anyhow::Context`][].
+///
+/// [`Error`]: struct.Error.html
+/// [`anyhow::Context`]: https://docs.rs/anyhow/latest/anyhow/trait.Context.html
+pub trait Context<T> {
+    /// Maps the error to an [`Error`][] instance with the given message.
+    ///
+    /// [`Error`]: struct.Error.html
+    fn context(self, msg: impl Into<String>) -> Result<T, Error>;
+
+    /// Maps the error to an [`Error`][] instance message produced by the given callback.
+    ///
+    /// [`Error`]: struct.Error.html
+    fn with_context<F, S>(self, cb: F) -> Result<T, Error>
+    where
+        F: Fn() -> S,
+        S: Into<String>;
+}
+
+impl<T, E: Into<ErrorKind>> Context<T> for Result<T, E> {
+    fn context(self, msg: impl Into<String>) -> Result<T, Error> {
+        self.map_err(|err| Error::new(msg, err))
+    }
+
+    fn with_context<F, S>(self, cb: F) -> Result<T, Error>
+    where
+        F: Fn() -> S,
+        S: Into<String>,
+    {
+        self.map_err(move |err| Error::new(cb(), err))
+    }
+}
+
 /// An error that occured in a `genpdf` function.
 ///
 /// The error consists of an error message (provided by the `Display` implementation) and an error

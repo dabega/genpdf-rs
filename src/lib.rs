@@ -169,6 +169,8 @@ use derive_more::{
     Add, AddAssign, Div, DivAssign, From, Into, Mul, MulAssign, Sub, SubAssign, Sum,
 };
 
+use error::Context as _;
+
 /// A length measured in millimeters.
 ///
 /// `genpdf` always uses millimeters as its length unit, except for the font size that is measured
@@ -639,9 +641,8 @@ impl Document {
     /// documentation](index.html#rendering-process).
     pub fn render_to_file(self, path: impl AsRef<path::Path>) -> Result<(), error::Error> {
         let path = path.as_ref();
-        let file = fs::File::create(path).map_err(|err| {
-            error::Error::new(format!("Could not create file {}", path.display()), err)
-        })?;
+        let file = fs::File::create(path)
+            .with_context(|| format!("Could not create file {}", path.display()))?;
         self.render(file)
     }
 }

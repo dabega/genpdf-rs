@@ -20,7 +20,7 @@
 
 use std::io;
 
-use crate::error::{Error, ErrorKind};
+use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
 use crate::style::{Color, Style};
 use crate::{Margins, Mm, Position, Size};
@@ -117,7 +117,7 @@ impl Renderer {
     ) -> Result<printpdf::IndirectFontRef, Error> {
         self.doc
             .add_builtin_font(builtin)
-            .map_err(|err| Error::new("Failed to load PDF font", err))
+            .context("Failed to load PDF font")
     }
 
     /// Loads the font from the given data, adds it to the generated document and returns a
@@ -125,14 +125,14 @@ impl Renderer {
     pub fn add_embedded_font(&self, data: &[u8]) -> Result<printpdf::IndirectFontRef, Error> {
         self.doc
             .add_external_font(data)
-            .map_err(|err| Error::new("Failed to load PDF font", err))
+            .context("Failed to load PDF font")
     }
 
     /// Writes this PDF document to a writer.
     pub fn write(self, w: impl io::Write) -> Result<(), Error> {
         self.doc
             .save(&mut io::BufWriter::new(w))
-            .map_err(|err| Error::new("Failed to save document", err))
+            .context("Failed to save document")
     }
 }
 

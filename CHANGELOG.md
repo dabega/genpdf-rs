@@ -45,6 +45,7 @@ SPDX-License-Identifier: CC0-1.0
   document pages.
 - Add support for kerning and add the `Font::kerning` and `Font::glyph_ids`
   methods.
+- Add the `error::Context` trait for easier error generation.
 
 ## Bug Fixes
 
