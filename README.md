@@ -25,8 +25,11 @@ let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
 // Create a document and set the default font family
 let mut doc = genpdf::Document::new(font_family);
 // Change the default settings
-doc.set_margins(10);
 doc.set_title("Demo document");
+// Customize the pages
+let mut decorator = genpdf::SimplePageDecorator::new();
+decorator.set_margins(10);
+doc.set_page_decorator(decorator);
 // Add one or more elements
 doc.push(genpdf::elements::Paragraph::new("This is a demo document."));
 // Render the document and write it to a file
@@ -45,7 +48,7 @@ For more information, see the [API documentation](https://docs.rs/genpdf).
 
 - PDF generation in pure Rust
 - Text rendering with support for setting the font family, style and size as
-  well as the text color and text effects (bold or italic)
+  well as the text color and text effects (bold or italic) and with kerning
 - Text wrapping at word boundaries and optional hyphenation
 - Layout of elements sequentially or in tables
 - Rudimentary support for shapes
