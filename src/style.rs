@@ -262,9 +262,7 @@ impl Style {
     /// [`FontCache`]: ../fonts/struct.FontCache.html
     pub fn str_width(&self, font_cache: &fonts::FontCache, s: &str) -> Mm {
         let font = self.font(font_cache);
-        s.chars()
-            .map(|c| font.char_width(font_cache, c, self.font_size()))
-            .sum()
+        font.str_width(font_cache, s, self.font_size())
     }
 
     /// Returns the font family for this style or the default font family using the given font

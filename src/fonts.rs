@@ -399,9 +399,60 @@ impl Font {
     ///
     /// [`FontCache`]: struct.FontCache.html
     pub fn str_width(&self, font_cache: &FontCache, s: &str, font_size: u8) -> Mm {
-        s.chars()
-            .map(|c| self.char_width(font_cache, c, font_size))
-            .sum()
+        let str_width: Mm = font_cache
+            .get_rt_font(*self)
+            .glyphs_for(s.chars())
+            .map(|g| g.scaled(self.scale).h_metrics().advance_width)
+            .map(|w| Mm::from(printpdf::Pt(f64::from(w * f32::from(font_size)))))
+            .sum();
+        let kerning_width: Mm = self
+            .kerning(font_cache, s.chars())
+            .into_iter()
+            .map(|val| val * f32::from(font_size))
+            .map(|val| Mm::from(printpdf::Pt(f64::from(val))))
+            .sum();
+        str_width + kerning_width
+    }
+
+    /// Returns the kerning data for the given sequence of characters.
+    ///
+    /// The *i*-th value of the returned data is the amount of kerning to insert before the *i*-th
+    /// character of the sequence.
+    ///
+    /// The given [`FontCache`][] must be the font cache that loaded this font.
+    ///
+    /// [`FontCache`]: struct.FontCache.html
+    pub fn kerning<I>(&self, font_cache: &FontCache, iter: I) -> Vec<f32>
+    where
+        I: IntoIterator<Item = char>,
+    {
+        let font = font_cache.get_rt_font(*self);
+        font.glyphs_for(iter.into_iter())
+            .scan(None, |last, g| {
+                let pos = if let Some(last) = last {
+                    Some(font.pair_kerning(self.scale, *last, g.id()))
+                } else {
+                    Some(0.0)
+                };
+                *last = Some(g.id());
+                pos
+            })
+            .collect()
+    }
+
+    /// Returns the glyphs IDs for the given sequence of characters.
+    ///
+    /// The given [`FontCache`][] must be the font cache that loaded this font.
+    ///
+    /// [`FontCache`]: struct.FontCache.html
+    pub fn glyph_ids<I>(&self, font_cache: &FontCache, iter: I) -> Vec<u16>
+    where
+        I: IntoIterator<Item = char>,
+    {
+        let font = font_cache.get_rt_font(*self);
+        font.glyphs_for(iter.into_iter())
+            .map(|g| g.id().0 as u16)
+            .collect()
     }
 }
 
