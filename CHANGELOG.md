@@ -43,8 +43,6 @@ SPDX-License-Identifier: CC0-1.0
 - Add the `PageDecorator` trait, the `SimplePageDecorator` implementation and
   the `Document::set_page_decorator` method to allow customization of all
   document pages.
-- Add support for kerning and add the `Font::kerning` and `Font::glyph_ids`
-  methods.
 - Add the `error::Context` trait for easier error generation.
 
 ## Bug Fixes

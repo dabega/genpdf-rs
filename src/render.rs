@@ -426,23 +426,16 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
     /// The font cache for this text section must contain the PDF font for the given style.
     pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
         let font = style.font(self.font_cache);
-
-        let positions = font
-            .kerning(self.font_cache, s.as_ref().chars())
-            .into_iter()
-            // Kerning is measured in 1/1000 em
-            .map(|pos| pos * -1000.0)
-            .map(|pos| pos as i64);
-        let codepoints = if font.is_builtin() {
-            // Built-in fonts always use the Windows-1252 encoding
-            encode_win1252(s.as_ref())?
-        } else {
-            font.glyph_ids(&self.font_cache, s.as_ref().chars())
-        };
+        if font.is_builtin() {
+            // Built-in fonts always use the Windows-1252 encoding.  The conversion is done by
+            // printpdf, but we want to return an error instead of just ignoring the unsupported
+            // characters.
+            ensure_win1252_encoding(s.as_ref())?;
+        }
 
         let font = self
             .font_cache
-            .get_pdf_font(font)
+            .get_pdf_font(style.font(self.font_cache))
             .expect("Could not find PDF font in font cache");
         if let Some(color) = style.color() {
             self.layer().set_fill_color(color.into());
@@ -451,9 +444,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
         }
         self.fill_color = style.color();
         self.layer().set_font(font, style.font_size().into());
-
-        self.layer()
-            .write_positioned_codepoints(positions.zip(codepoints.iter().copied()));
+        self.layer().write_text(s.as_ref(), font);
         Ok(())
     }
 
@@ -471,16 +462,14 @@ impl<'a, 'f, 'l> Drop for TextSection<'a, 'f, 'l> {
     }
 }
 
-/// Encodes the given string using the Windows-1252 encoding for use with built-in PDF fonts,
-/// returning an error if it contains unsupported characters.
-fn encode_win1252(s: &str) -> Result<Vec<u16>, Error> {
-    let bytes: Vec<_> = lopdf::Document::encode_text(Some("WinAnsiEncoding"), s)
-        .into_iter()
-        .map(u16::from)
-        .collect();
+/// Checks whether all characters of the given string are encodable in Windows-1252.
+fn ensure_win1252_encoding(s: &str) -> Result<(), Error> {
+    let encoded = lopdf::Document::encode_text(Some("WinAnsiEncoding"), s);
 
-    // Windows-1252 is a single-byte encoding, so one byte is one character.
-    if bytes.len() != s.chars().count() {
+    // Windows-1252 is a single-byte encoding, so one byte in encoded is one character.
+    if encoded.len() == s.chars().count() {
+        Ok(())
+    } else {
         Err(Error::new(
             format!(
                 "Tried to print a string with characters that are not supported by the \
@@ -489,7 +478,5 @@ fn encode_win1252(s: &str) -> Result<Vec<u16>, Error> {
             ),
             ErrorKind::UnsupportedEncoding,
         ))
-    } else {
-        Ok(bytes)
     }
 }
