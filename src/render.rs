@@ -400,7 +400,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
             fill_color: None,
         };
         section.layer().begin_text_section();
-        section.layer().set_line_height(line_height.0 as i64);
+        section.layer().set_line_height(line_height.0);
         let cursor = area.transform_position(position);
         section
             .layer()
