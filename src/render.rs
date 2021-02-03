@@ -48,7 +48,8 @@ impl Renderer {
         );
         let page_ref = doc.get_page(page_idx);
         let layer_ref = page_ref.get_layer(layer_idx);
-        let page = Page::new(page_ref, layer_ref, size);
+        let mut page = Page::new(page_ref, layer_ref, size);
+        page.add_layer("Footer");
 
         Ok(Renderer {
             doc,

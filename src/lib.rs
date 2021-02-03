@@ -613,9 +613,11 @@ impl Document {
         }
         self.context.font_cache.load_pdf_fonts(&renderer)?;
         loop {
-            let mut area = renderer.last_page().last_layer().area();
+            let mut area = renderer.last_page().first_layer().area();
+            let area2 = renderer.last_page().last_layer().area();
             if let Some(decorator) = &mut self.decorator {
                 area = decorator.decorate_page(&self.context, area, self.style)?;
+                decorator.decorate_page_footer(&self.context, area2, self.style)?;
             }
             let result = self.root.render(&self.context, area, self.style)?;
             if result.has_more {
@@ -689,9 +691,21 @@ pub trait PageDecorator {
         area: render::Area<'a>,
         style: style::Style,
     ) -> Result<render::Area<'a>, error::Error>;
+
+    /// Prepares the page with the given area after it is filled with the document content and
+    /// returns the writable area of the page.
+    ///
+    /// The returned area will be passed to the document content.
+    fn decorate_page_footer<'a>(
+        &mut self,
+        context: &Context,
+        area: render::Area<'a>,
+        style: style::Style,
+    ) -> Result<render::Area<'a>, error::Error>;
 }
 
 type HeaderCallback = Box<dyn Fn(usize) -> Box<dyn Element>>;
+type FooterCallback = Box<dyn Fn(usize) -> Box<dyn Element>>;
 
 /// Prepares a page of a document with margins and a header.
 ///
@@ -707,6 +721,7 @@ pub struct SimplePageDecorator {
     page: usize,
     margins: Option<Margins>,
     header_cb: Option<HeaderCallback>,
+    footer_cb: Option<FooterCallback>,
 }
 
 impl SimplePageDecorator {
@@ -735,6 +750,20 @@ impl SimplePageDecorator {
         // We manually box the return type of the callback so that it is easier to write closures.
         self.header_cb = Some(Box::new(move |page| Box::new(cb(page))));
     }
+
+    /// Sets the footer generator for this document.
+    ///
+    /// The given closure will be called once per page.  Its argument is the page number (starting
+    /// with 1), and its return value will be rendered at the top of the page.  The document
+    /// content will start directly after the element.
+    pub fn set_footer<F, E>(&mut self, cb: F)
+    where
+        F: Fn(usize) -> E + 'static,
+        E: Element + 'static,
+    {
+        // We manually box the return type of the callback so that it is easier to write closures.
+        self.footer_cb = Some(Box::new(move |page| Box::new(cb(page))));
+    }
 }
 
 impl PageDecorator for SimplePageDecorator {
@@ -752,6 +781,20 @@ impl PageDecorator for SimplePageDecorator {
             let mut element = cb(self.page);
             let result = element.render(context, area.clone(), style)?;
             area.add_offset(Position::new(0, result.size.height));
+        }
+        Ok(area)
+    }
+
+    fn decorate_page_footer<'a>(
+        &mut self,
+        context: &Context,
+        mut area: render::Area<'a>,
+        style: style::Style,
+    ) -> Result<render::Area<'a>, error::Error> {
+        if let Some(cb) = &self.footer_cb {
+            let mut element = cb(self.page);
+            area.add_offset(Position::new(0, area.size().height - Mm(15.0)));
+            let _result = element.render(context, area.clone(), style)?;
         }
         Ok(area)
     }
