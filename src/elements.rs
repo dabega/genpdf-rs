@@ -41,6 +41,9 @@
 use std::collections;
 use std::iter;
 use std::mem;
+use image::{bmp::BmpDecoder, jpeg::JpegDecoder, png::PngDecoder, image_dimensions};
+use std::fs::File;
+use printpdf::*;
 
 use crate::error::{Error, ErrorKind};
 use crate::render;
@@ -175,6 +178,58 @@ impl Element for Text {
         } else {
             result.has_more = true;
         }
+        Ok(result)
+    }
+}
+
+/// A basic image.
+///
+/// This element renders a single image. For now there is no scaling or alignment.
+///
+/// [`Image`]: struct.Image.html
+#[derive(Clone, Debug, Default)]
+pub struct SimpleImage {
+    path: String,
+    page_size: Size,
+}
+
+impl SimpleImage {
+    /// Creates a new instance with the given styled string.
+    pub fn new(text: impl Into<String>, page_size: Size) -> SimpleImage {
+        SimpleImage { path: text.into(), page_size: page_size }
+    }
+}
+
+impl Element for SimpleImage {
+    fn render(
+        &mut self,
+        _context: &Context,
+        area: render::Area<'_>,
+        mut _style: Style,
+    ) -> Result<RenderResult, Error> {
+        let mut result = RenderResult::default();
+        let (w, h) = image_dimensions(self.path.to_owned()).unwrap();
+        let width: Mm = printpdf::Px(w as usize).into_pt(300.0).into();
+        let height: Mm = printpdf::Px(h as usize).into_pt(300.0).into();
+        let mut image_file = File::open(self.path.to_owned()).unwrap();
+        
+        let image: Image;
+        if self.path.to_owned().ends_with(".bmp") {
+            let decoder = BmpDecoder::new(&mut image_file).unwrap();
+            image = Image::try_from(decoder).unwrap();
+        } else if self.path.to_owned().ends_with(".png") {
+            let decoder = PngDecoder::new(&mut image_file).unwrap();
+            image = Image::try_from(decoder).unwrap();
+        } else {
+            let decoder = JpegDecoder::new(&mut image_file).unwrap();
+            image = Image::try_from(decoder).unwrap();
+        }
+        area.clone().add_image(image, self.page_size, Size::new(width, height));
+        
+        result.size = Size::new(
+            width,
+            height,
+        );
         Ok(result)
     }
 }

@@ -276,6 +276,12 @@ impl<'a> Area<'a> {
     pub fn set_height(&mut self, height: Mm) {
         self.size.height = height;
     }
+    
+    /// Adds an image to the area.
+    // pub fn add_image(&mut self, image: printpdf::types::plugins::graphics::two_dimensional::image::Image, position: Position) {
+    pub fn add_image(&mut self, image: printpdf::types::plugins::graphics::two_dimensional::image::Image, page_size: Size, size: Size) {
+        image.add_to_layer(self.layer().to_owned(), Some(printpdf::Mm(self.origin.x.0)), Some(printpdf::Mm(page_size.height.0 - size.height.0 - self.origin.y.0)), None, None, None, None);
+    }
 
     /// Splits this area horizontally using the given weights.
     ///

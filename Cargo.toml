@@ -24,9 +24,14 @@ rusttype = "0.8"
 version = "0.8"
 optional = true
 
+[dependencies.image]
+version = "0.23"
+default-features = false
+features = ["gif", "jpeg", "png", "pnm", "tiff", "bmp"]
+
 [dependencies.printpdf]
 version = "0.3.3"
-default-features = false
+# default-features = false
 
 [dependencies.derive_more]
 version = "0.99"
