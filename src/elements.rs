@@ -683,28 +683,47 @@ impl<E: Element> Element for FramedElement<E> {
         style: Style,
     ) -> Result<RenderResult, Error> {
         let result = self.element.render(context, area.clone(), style)?;
+
+        let line_shift: Mm;
+        if let Some(thickness) = style.thickness() {
+            line_shift = printpdf::Pt(thickness.0/2.0).into();
+        } else {
+            line_shift = printpdf::Pt(0.5).into();
+        }
+        // let width: Mm = area.size().width;
+        let width: Mm = result.size.width;
+        let height: Mm = result.size.height;
+
+        // TODO Identify properly when elemnt wasn't properly rendered
+        if height < Mm(4.0) {
+            return Ok(RenderResult{
+                size: result.size,
+                has_more: true
+            })
+        }
+
         area.draw_line(
-            vec![Position::default(), Position::new(0, result.size.height)],
+            vec![Position::new(0, Mm(0.0) - line_shift), Position::new(0, height + line_shift)],
             style,
         );
         area.draw_line(
             vec![
-                Position::new(area.size().width, 0),
-                Position::new(area.size().width, result.size.height),
+                Position::new(width, Mm(0.0) - line_shift),
+                Position::new(width, height + line_shift),
             ],
             style,
         );
         if self.is_first {
             area.draw_line(
-                vec![Position::default(), Position::new(area.size().width, 0)],
+                vec![Position::new(Mm(0.0) - line_shift, 0), Position::new(width + line_shift, 0)],
                 style,
             );
         }
         if !result.has_more {
             area.draw_line(
                 vec![
-                    Position::new(0, result.size.height),
-                    Position::new(area.size().width, result.size.height),
+                    Position::new(Mm(0.0) - line_shift, height),
+                    Position::new(width + line_shift, height),
                 ],
                 style,
             );
@@ -1064,10 +1083,16 @@ impl CellDecorator for FrameCellDecorator {
         style: Style,
     ) {
         let size = area.size();
+        let line_shift: Mm;
+        if let Some(thickness) = style.thickness() {
+            line_shift = printpdf::Pt(thickness.0/2.0).into();
+        } else {
+            line_shift = printpdf::Pt(0.5).into();
+        }
 
         if self.print_left(column) {
             area.draw_line(
-                vec![Position::default(), Position::new(0, size.height)],
+                vec![Position::new(0, Mm(0.0) - line_shift), Position::new(0, size.height + line_shift)],
                 style,
             );
         }
@@ -1075,8 +1100,8 @@ impl CellDecorator for FrameCellDecorator {
         if self.print_right(column) {
             area.draw_line(
                 vec![
-                    Position::new(size.width, 0),
-                    Position::new(size.width, size.height),
+                    Position::new(size.width, Mm(0.0) - line_shift),
+                    Position::new(size.width, size.height + line_shift),
                 ],
                 style,
             );
@@ -1084,7 +1109,7 @@ impl CellDecorator for FrameCellDecorator {
 
         if self.print_top(row) {
             area.draw_line(
-                vec![Position::default(), Position::new(size.width, 0)],
+                vec![Position::new(Mm(0.0) - line_shift, 0), Position::new(size.width + line_shift, 0)],
                 style,
             );
         }
@@ -1092,8 +1117,8 @@ impl CellDecorator for FrameCellDecorator {
         if self.print_bottom(row, has_more) {
             area.draw_line(
                 vec![
-                    Position::new(0, size.height),
-                    Position::new(size.width, size.height),
+                    Position::new(Mm(0.0) - line_shift, size.height),
+                    Position::new(size.width + line_shift, size.height),
                 ],
                 style,
             );
