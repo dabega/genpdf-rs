@@ -76,19 +76,26 @@ use crate::{Context, Element, Margins, Mm, Position, RenderResult, Size};
 pub struct LinearLayout {
     elements: Vec<Box<dyn Element>>,
     render_idx: usize,
+    vertical: bool,
 }
 
 impl LinearLayout {
-    fn new() -> LinearLayout {
+    fn new(vertical: bool) -> LinearLayout {
         LinearLayout {
             elements: Vec::new(),
             render_idx: 0,
+            vertical: vertical,
         }
     }
 
     /// Creates a new linear layout that arranges its elements vertically.
     pub fn vertical() -> LinearLayout {
-        LinearLayout::new()
+        LinearLayout::new(true)
+    }
+
+    /// Creates a new linear layout that arranges its elements vertically.
+    pub fn horizontal() -> LinearLayout {
+        LinearLayout::new(false)
     }
 
     /// Adds the given element to this layout.
@@ -123,6 +130,55 @@ impl LinearLayout {
         result.has_more = self.render_idx < self.elements.len();
         Ok(result)
     }
+
+    fn render_horizontal(
+        &mut self,
+        context: &Context,
+        mut area: render::Area<'_>,
+        style: Style,
+    ) -> Result<RenderResult, Error> {
+        let mut result = RenderResult::default();
+        let mut line_height: Mm = Mm(0.0);
+        let original_area_width = area.size().width.to_owned();
+        let mut already_skipped: bool = false;
+        while (area.size().width > Mm(0.0) || area.size().height > Mm(0.0)) && self.render_idx < self.elements.len() {
+            let element_result =
+                self.elements[self.render_idx].render(context, area.clone(), style)?;
+
+            // If element was not rendered properly, go to next line
+            if element_result.has_more {
+                if already_skipped == true {
+                    result.has_more = true;
+                    return Ok(result);
+                } else {
+                    already_skipped = true;
+                    area.add_offset(Position::new(area.size().width - original_area_width, 0));
+                    area.add_offset(Position::new(0, line_height + Mm(2.0)));
+                    result.size = result.size.stack_vertical(Size{ width: element_result.size.width, height: line_height});
+                }
+            } else {
+                already_skipped = false;
+                line_height = line_height.max(element_result.size.height);
+                area.add_offset(Position::new(element_result.size.width + Mm(2.0), 0));
+                result.size = result.size.stack_horizontal(element_result.size);
+                self.render_idx += 1;
+            }
+            // line_height = line_height.max(element_result.size.height);
+
+            // if area.size().width > Mm(30.0) {
+            //     area.add_offset(Position::new(element_result.size.width + Mm(2.0), 0));
+            //     result.size = result.size.stack_horizontal(element_result.size);
+            // } else {
+            //     area.add_offset(Position::new(area.size().width - original_area_width, 0));
+            //     area.add_offset(Position::new(0, line_height + Mm(2.0)));
+            //     result.size = result.size.stack_vertical(Size{ width: element_result.size.width, height: line_height});
+            // }
+            
+            // self.render_idx += 1;
+        }
+        result.has_more = self.render_idx < self.elements.len();
+        Ok(result)
+    }
 }
 
 impl Element for LinearLayout {
@@ -133,7 +189,11 @@ impl Element for LinearLayout {
         style: Style,
     ) -> Result<RenderResult, Error> {
         // TODO: add horizontal layout
-        self.render_vertical(context, area, style)
+        if self.vertical == true {
+            self.render_vertical(context, area, style)
+        } else {
+            self.render_horizontal(context, area, style)
+        }
     }
 }
 
@@ -302,6 +362,7 @@ pub struct Paragraph {
     text: Vec<StyledString>,
     words: collections::VecDeque<StyledString>,
     style_applied: bool,
+    nowrap: bool,
     alignment: Alignment,
 }
 
@@ -333,6 +394,12 @@ impl Paragraph {
     /// Adds a string to the end of this paragraph and returns the paragraph.
     pub fn string(mut self, s: impl Into<StyledString>) -> Self {
         self.push(s);
+        self
+    }
+
+    /// Specify is the paragraph must be on one line and returns the paragraph.
+    pub fn nowrap(mut self) -> Self {
+        self.nowrap = true;
         self
     }
 
@@ -386,8 +453,11 @@ impl Element for Paragraph {
         let height = style.line_height(&context.font_cache);
         let words = self.words.iter().map(Into::into);
         let mut rendered_len = 0;
-        for (line, delta) in wrap::Wrapper::new(words, context, area.size().width) {
-            let width = line.iter().map(|s| s.width(&context.font_cache)).sum();
+        for (line, delta) in wrap::Wrapper::new(words, context, area.size().width, self.nowrap) {
+            let width: Mm = line.iter().map(|s| s.width(&context.font_cache)).sum();
+            if width > area.size().width {
+                println!("WWW: {:#?} VS {:#?}", width.0, area.size().width.0);
+            }
             let position = Position::new(self.get_offset(width, area.size().width), 0);
             // TODO: calculate the maximum line height
             if let Ok(mut section) = area.text_section(&context.font_cache, position, style) {

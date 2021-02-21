@@ -17,17 +17,19 @@ pub struct Wrapper<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> {
     context: &'c Context,
     width: Mm,
     x: Mm,
+    nowrap: bool,
     buf: Vec<style::StyledCow<'s>>,
 }
 
 impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Wrapper<'c, 's, I> {
     /// Creates a new wrapper for the given word sequence and with the given maximum width.
-    pub fn new(iter: I, context: &'c Context, width: Mm) -> Wrapper<'c, 's, I> {
+    pub fn new(iter: I, context: &'c Context, width: Mm, nowrap: bool) -> Wrapper<'c, 's, I> {
         Wrapper {
             iter,
             context,
             width,
             x: Mm(0.0),
+            nowrap: nowrap,
             buf: Vec::new(),
         }
     }
@@ -43,9 +45,10 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
         while let Some(s) = self.iter.next() {
             let mut width = s.width(&self.context.font_cache);
 
-            if self.x + width > self.width {
+            // TODO: Verify what happens when element is bigger than container (see if risk of infinite loop)
+            if self.x + width > self.width && (self.nowrap == false || self.width < Mm(0.0)) {
                 // The word does not fit into the current line (at least not completely)
-
+                
                 let mut delta = 0;
                 // Try to split the word so that the first part fits into the current line
                 let s = if let Some((start, end)) = split(self.context, s, self.width - self.x) {
@@ -72,6 +75,12 @@ impl<'c, 's, I: Iterator<Item = style::StyledStr<'s>>> Iterator for Wrapper<'c, 
                 self.x = width;
                 return Some((v, delta));
             } else {
+                if self.nowrap == true {
+                    if self.x + width > self.width {
+                        return None
+                    }
+                }
+
                 // The word fits in the current line, so just append it
                 self.buf.push(s.into());
                 self.x += width;
