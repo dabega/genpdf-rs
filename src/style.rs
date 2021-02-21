@@ -113,6 +113,7 @@ pub struct Style {
     color: Option<Color>,
     is_bold: bool,
     is_italic: bool,
+    thickness: Option<Mm>,
 }
 
 impl Style {
@@ -132,6 +133,9 @@ impl Style {
         }
         if let Some(color) = style.color {
             self.color = Some(color);
+        }
+        if let Some(thickness) = style.thickness {
+            self.thickness = Some(thickness);
         }
         if style.is_bold {
             self.is_bold = true;
@@ -155,6 +159,11 @@ impl Style {
     /// Returns the outline color for this style, if set.
     pub fn color(&self) -> Option<Color> {
         self.color
+    }
+
+    /// Returns the outline thickness for this style, if set.
+    pub fn thickness(&self) -> Option<Mm> {
+        self.thickness
     }
 
     /// Returns whether the bold text effect is set.
@@ -240,6 +249,17 @@ impl Style {
     /// Sets the outline color for this style and returns it.
     pub fn with_color(mut self, color: Color) -> Self {
         self.set_color(color);
+        self
+    }
+
+    /// Sets the outline thickness for this style.
+    pub fn set_thickness(&mut self, thickness: impl Into<Mm>) {
+        self.thickness = Some(thickness.into());
+    }
+
+    /// Sets the outline thickness for this style and returns it.
+    pub fn with_thickness(mut self, thickness: impl Into<Mm>) -> Self {
+        self.set_thickness(thickness);
         self
     }
 

@@ -320,13 +320,20 @@ impl<'a> Area<'a> {
             has_stroke: true,
             is_clipping_path: false,
         };
+        
         if let Some(color) = style.color() {
             self.layer().set_outline_color(color.into());
+        }
+        if let Some(thickness) = style.thickness() {
+            self.layer().set_outline_thickness(thickness.into());
         }
         self.layer().add_shape(line);
         if style.color().is_some() {
             self.layer().set_outline_color(Color::Rgb(0, 0, 0).into());
         }
+
+        // Reset line thickness for other elements
+        self.layer().set_outline_thickness(Mm(1.2).into());
     }
 
     /// Tries to draw the given string at the given position and returns `true` if the area was
