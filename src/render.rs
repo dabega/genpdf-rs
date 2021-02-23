@@ -440,12 +440,26 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
     /// The font cache for this text section must contain the PDF font for the given style.
     pub fn print_str(&mut self, s: impl AsRef<str>, style: Style) -> Result<(), Error> {
         let font = style.font(self.font_cache);
-        if font.is_builtin() {
-            // Built-in fonts always use the Windows-1252 encoding.  The conversion is done by
-            // printpdf, but we want to return an error instead of just ignoring the unsupported
-            // characters.
-            ensure_win1252_encoding(s.as_ref())?;
-        }
+        let text: String = match font.is_builtin() {
+            true => {
+                // Built-in fonts always use the Windows-1252 encoding.  The conversion is done by
+                // printpdf, but we want to return an error instead of just ignoring the unsupported
+                // characters.
+                match ensure_win1252_encoding(s.as_ref()) {
+                    Ok(_) => s.as_ref().to_owned(),
+                    Err(_) => {
+                        let text = s.as_ref().replace('\u{a0}', " ");
+                        match ensure_win1252_encoding(&text) {
+                            Ok(_) => text,
+                            Err(e) => {
+                                return Err(e)
+                            }
+                        }
+                    }
+                }
+            },
+            false => s.as_ref().to_owned()
+        };
 
         let font = self
             .font_cache
@@ -458,7 +472,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
         }
         self.fill_color = style.color();
         self.layer().set_font(font, style.font_size().into());
-        self.layer().write_text(s.as_ref(), font);
+        self.layer().write_text(&text, font);
         Ok(())
     }
 
