@@ -19,6 +19,7 @@ readme = "README.md"
 [dependencies]
 lopdf = "0.26"
 rusttype = "0.8"
+unicode-segmentation = "1.7.1"
 
 [dependencies.hyphenation]
 version = "0.8"

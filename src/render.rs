@@ -19,6 +19,7 @@
 //! [`TextSection`]: struct.TextSection.html
 
 use std::io;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::error::{Context as _, Error, ErrorKind};
 use crate::fonts;
@@ -448,7 +449,7 @@ impl<'a, 'f, 'l> TextSection<'a, 'f, 'l> {
                 match ensure_win1252_encoding(s.as_ref()) {
                     Ok(_) => s.as_ref().to_owned(),
                     Err(_) => {
-                        let text = s.as_ref().replace('\u{a0}', " ");
+                        let text = sanitize_string(s.as_ref());
                         match ensure_win1252_encoding(&text) {
                             Ok(_) => text,
                             Err(e) => {
@@ -507,4 +508,29 @@ fn ensure_win1252_encoding(s: &str) -> Result<(), Error> {
             ErrorKind::UnsupportedEncoding,
         ))
     }
+}
+
+fn is_first_char_normal_ascii(c: &str) -> bool {
+    c.as_bytes().get(0).map_or(false, |&c| c >= 32 && c <= 126)
+}
+
+pub fn sanitize_string(s: &str) -> String {
+    UnicodeSegmentation::graphemes(s, true)
+        .map(|c| match c {
+            c if c.len() == 1 && is_first_char_normal_ascii(c) => c, // normal printable range
+            "\u{a0}" => " ",
+            "\t" => "\t",
+            "\r" | "\n" | "\r\n" => "\n", // normalize all newlines
+            "á" | "à" | "ã" | "â" | "é" | "è" | "ê" | "í" | "ì" | "ĩ" | "î" | "ó" | "ò" | "õ" | "ô" | "ú" | "ù" | "ũ" | "û" | "ñ" | "ń" => c,
+            "Á" | "À" | "Ã" | "Â" | "É" | "È" | "Ê" | "Í" | "Ì" | "Î" | "Ó" | "Ò" | "Õ" | "Ô" | "Ú" | "Ù" | "Û" | "Ñ" | "Ń" => c,
+            _ => {
+                // If the first character is a normal ascii character, then use it
+                if is_first_char_normal_ascii(c) {
+                    c.get(..1).unwrap_or("")
+                } else {
+                    ""
+                }
+            }
+        })
+        .collect()
 }
